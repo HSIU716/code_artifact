@@ -38,10 +38,8 @@
     const { useState, useEffect, useMemo } = React;
 
     // ==========================================
-    // 🔑 在此處直接填入您的 Google Gemini API Key (選填)
+    // 🔑 在此處填入您的 Google Gemini API Key (選填，亦可於介面輸入)
     // ==========================================
-    // 將引號內的文字替換為您的 API Key (例如: "AIzaSyD...")
-    // 填入後打開網頁即可自動啟用 AI 生成，亦可在畫面上直接輸入！
     const DEFAULT_GEMINI_API_KEY = "";
 
     // ==========================================
@@ -527,7 +525,7 @@
 
       const triggerToast = (msg) => {
         setToastMessage(msg);
-        setTimeout(() => setToastMessage(""), 2800);
+        setTimeout(() => setToastMessage(""), 3200);
       };
 
       const handleNavigate = (item) => {
@@ -578,139 +576,83 @@
         }
       };
 
-      // AI 規劃調用 (Gemini 2.5 API + 智慧離線模組雙軌)
+      // 100% 純 Gemini API 行程規劃生成
       const handleGenerateAiTrip = async () => {
-        setIsGenerating(true);
         const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
-        if (apiKey) {
-          localStorage.setItem("GEMINI_KEY", apiKey);
-        }
-
-        // 離線生成演算法（無需 Key 也可完美產出）
-        const generateOfflineTrip = () => {
-          const dest = plannerForm.destination || "精選秘境之旅";
-          const days = [];
-          for (let i = 1; i <= plannerForm.daysCount; i++) {
-            days.push({
-              day: i,
-              date: `第 ${i} 天`,
-              title: `${dest}・第 ${i} 日深度探索`,
-              cityOrArea: `${dest} 核心風景區`,
-              weather: {
-                temp: "14°C ~ 22°C",
-                condition: "晴朗舒適・宜出遊",
-                icon: i % 2 === 0 ? "sunny" : "cloudy",
-                humidity: "56%",
-                clothingTip: "洋蔥式舒適穿搭，隨身攜帶薄外套與防曬防風裝備。",
-                geographyNote: "地勢開闊，清晨微涼，午後陽光充足。",
-                safetyHealthTip: "步行石階路段請著防滑健走鞋，隨身補充足夠水分。"
-              },
-              items: [
-                {
-                  id: `gen-${i}-1`,
-                  time: "09:30",
-                  type: "attraction",
-                  title: `${dest} 地標絕景晨光巡禮`,
-                  locationName: `${dest} Main Landmark`,
-                  navQuery: `${dest} tourist attractions`,
-                  duration: "2.5 小時",
-                  description: `深入探訪${dest}最負盛名的代表景觀，感受大自然的壯麗鬼斧神工與悠久人文歷史底蘊。`,
-                  mustBuy: ["當地工藝限定紀念品", "手繪明信片套組"],
-                  storyAndTips: {
-                    story: `此處是${dest}最具象徵性的代表，融合悠久的自然風貌與在地傳奇歷史故事。`,
-                    culturalTip: "參觀時請保持安靜，依指示動線前行，拍照避免開啟閃光燈。",
-                    photoSpot: "入口處高台為全景最佳取景點，早晨順光拍攝最清澈。"
-                  }
-                },
-                {
-                  id: `gen-${i}-2`,
-                  time: "12:30",
-                  type: "food",
-                  title: `${dest} 景觀私房道地饗宴`,
-                  locationName: `${dest} Traditional Restaurant`,
-                  navQuery: `${dest} best local food restaurant`,
-                  duration: "1.5 小時",
-                  description: `品嚐當地主廚採集在地時令食材親自烹煮的特色經典料理，搭配在地特選飲品。`,
-                  mustEat: ["主廚手作經典主餐", "季節限定甜品"],
-                  mustOrder: ["在地招牌主廚套餐 (Chef Special)"],
-                  bookingCode: `RSV-${dest.slice(0, 3).toUpperCase()}-992${i}`,
-                  storyAndTips: {
-                    story: "傳承數十年的傳統烹調手藝，強調食材的原汁原味與細緻擺盤美學。",
-                    culturalTip: "若需結帳可於座位上示意服務人員，普遍接受信用卡或行動支付。"
-                  }
-                },
-                {
-                  id: `gen-${i}-3`,
-                  time: "15:00",
-                  type: "attraction",
-                  title: `${dest} 秘境小徑與文化漫步`,
-                  locationName: `${dest} Historic Old Town`,
-                  navQuery: `${dest} historic center`,
-                  duration: "2 小時",
-                  description: `漫步於充滿文化氣息的老街石板路，探訪文創小店與特色咖啡館，享受愜意午後。`,
-                  mustBuy: ["在地特產伴手禮", "純手工香氛工藝品"],
-                  storyAndTips: {
-                    story: "古老的巷弄見證了當地的黃金發展歲月，每一座建築都散發迷人的懷舊風情。",
-                    photoSpot: "巷弄轉角石階與復古街燈處，傍晚夕陽灑落時最具氛圍。"
-                  }
-                },
-                {
-                  id: `gen-${i}-4`,
-                  time: "18:00",
-                  type: "hotel",
-                  title: `${dest} 風格景觀特色旅宿`,
-                  locationName: `${dest} Boutique Resort & Hotel`,
-                  navQuery: `${dest} luxury hotel`,
-                  duration: "自駕約 30 分鐘",
-                  description: `入住視野遼闊的特色旅宿，在舒適靜謐的空間中洗滌一日疲憊，迎接明日精彩旅程。`,
-                  bookingCode: `HOTEL-STAY-${i}088`,
-                  storyAndTips: {
-                    selfDriveTip: "旅宿備有住客專屬免費停車場，直接沿指示車道開至大廳門口登記即可。"
-                  }
-                }
-              ]
-            });
-          }
-
-          return {
-            destination: plannerForm.destination,
-            subtitle: `${plannerForm.companion}・${plannerForm.stylePreference.slice(0, 24)}...`,
-            daysCount: plannerForm.daysCount,
-            companion: plannerForm.companion,
-            budget: plannerForm.budget,
-            season: "四季皆宜・最佳推薦時程",
-            geographyOverview: {
-              topography: `${plannerForm.destination} 地貌豐富，景觀層次多樣，自然與人文交織。`,
-              climate: "氣候宜人舒適，午後偶有微風，早晚溫差約 6~10°C。",
-              safetyHealth: "隨身補充水分與防曬，建議準備常備胃腸藥及輕便健行鞋。",
-              packingSummary: "舒適洋蔥式衣物、輕量防風外套、折疊晴雨傘、行動電源。"
-            },
-            days: days
-          };
-        };
-
+        
         if (!apiKey) {
-          // 無 API Key 時使用離線智慧模組立即生成
-          await new Promise(r => setTimeout(r, 600));
-          const offlineTrip = generateOfflineTrip();
-          setTripData(offlineTrip);
-          setActiveDayIndex(0);
-          setActiveCategory('all');
-          setIsGenerating(false);
-          setShowPlannerModal(false);
-          triggerToast("✨ 已為您繪製完成客製行程！(填入 API Key 可啟用即時全網 AI)");
+          setShowKeyInput(true);
+          triggerToast("⚠️ 請先輸入 Google Gemini API Key 才能開始 AI 規劃！");
           return;
         }
 
-        // 有 API Key 時呼叫 Google Gemini API
+        setIsGenerating(true);
+        localStorage.setItem("GEMINI_KEY", apiKey);
+
         const systemPrompt = `你是一位世界頂級的「旅行規劃專家」兼具深厚文化底蘊的「私房導遊」。
 請根據使用者的需求，以繁體中文 (台灣) 規劃一份極致精緻、手機閱讀友善的手繪風旅行手帳行程。
-你必須嚴格輸出合法的純 JSON 格式，不要包含任何 markdown 代碼塊外圍標記。`;
+你必須嚴格輸出合法的純 JSON 格式，不要包含任何 markdown 代碼塊外圍標記，也不要有額外文字。
+
+JSON 結構規範：
+{
+  "destination": "目的地全名與主題標題",
+  "subtitle": "副標題",
+  "daysCount": 數字,
+  "companion": "成員組成",
+  "budget": "預算等級",
+  "season": "推薦旅行季節與氣候特徵",
+  "geographyOverview": {
+    "topography": "詳細地形特徵",
+    "climate": "氣候特點",
+    "safetyHealth": "具體安全健康提醒",
+    "packingSummary": "核心穿著指南與裝備建議"
+  },
+  "days": [
+    {
+      "day": 1,
+      "date": "第1天 (日期/星期)",
+      "title": "當日主題路線名稱",
+      "cityOrArea": "當日所在城市或區域",
+      "weather": {
+        "temp": "氣溫範圍 (如 15°C ~ 22°C)",
+        "condition": "氣候簡述",
+        "icon": "sunny 或 rainy 或 cloudy",
+        "humidity": "濕度百分比",
+        "clothingTip": "當日穿著指南",
+        "geographyNote": "當日小區域地理與風候提醒",
+        "safetyHealthTip": "當日自駕或步行安全建議"
+      },
+      "items": [
+        {
+          "id": "d1-1",
+          "time": "時間 (如 09:00)",
+          "type": "attraction 或 food 或 transport 或 hotel",
+          "title": "項目名稱",
+          "locationName": "真實地點名稱",
+          "navQuery": "精確導航搜尋關鍵字 (英文或當地語言便於Google Maps導航)",
+          "duration": "預估逗留時間",
+          "description": "精鍊介紹 (約60字)",
+          "mustEat": ["必吃美食1", "必吃美食2"],
+          "mustOrder": ["必點菜單1", "必點菜單2"],
+          "mustBuy": ["必買伴手禮1", "必買伴手禮2"],
+          "bookingCode": "預約代號或通票 (選填)",
+          "storyAndTips": {
+            "story": "導遊私房景點故事與歷史人文典故 (約100字)",
+            "culturalTip": "在地文化習俗、禮儀或避坑小撇步",
+            "photoSpot": "攝影愛好者絕景拍攝角度",
+            "selfDriveTip": "自駕停車或路線指引"
+          }
+        }
+      ]
+    }
+  ]
+}`;
 
         const userQuery = `請為我規劃【${plannerForm.destination}】的 ${plannerForm.daysCount} 天精彩旅程。
 同行成員：${plannerForm.companion}
 預算期望：${plannerForm.budget}
-風格與偏好：${plannerForm.stylePreference}`;
+風格與偏好：${plannerForm.stylePreference}
+請確保每一天都有豐富的景點(attraction)、美食(food)、交通(transport)安排，並提供精確的地點導航關鍵字、必吃美食、必點菜單、必買伴手禮與深刻的導遊文化典故。`;
 
         const apiPayload = {
           contents: [{ parts: [{ text: userQuery }] }],
@@ -754,13 +696,7 @@
           setShowPlannerModal(false);
           triggerToast("✨ Gemini AI 已為您繪製完成全球專屬行程！");
         } else {
-          // 網路失敗自動退回離線生成
-          const fallbackTrip = generateOfflineTrip();
-          setTripData(fallbackTrip);
-          setActiveDayIndex(0);
-          setActiveCategory('all');
-          setShowPlannerModal(false);
-          triggerToast("💡 連線異常或 API Key 受限，已自動為您切換至離線智慧模組！");
+          triggerToast("⚠️ AI 行程生成失敗！請檢查 API Key 是否正確或網路連線後重試。");
         }
       };
 
@@ -1177,18 +1113,18 @@
                   </button>
                 </div>
 
-                {/* Gemini API Key 摺疊設定區 */}
+                {/* Gemini API Key 設定區 (純 AI 模式) */}
                 <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-amber-950 flex items-center gap-1">
-                      <span>🔑</span> Gemini API Key (選填)
+                      <span>🔑</span> Google Gemini API Key
                     </span>
                     <button
                       type="button"
                       onClick={() => setShowKeyInput(!showKeyInput)}
                       className="text-[11px] text-amber-800 underline font-bold"
                     >
-                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已設定 (點擊修改) ▼" : "輸入 Key 啟用線上 AI ▼")}
+                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已設定 (點擊修改) ▼" : "輸入 Key ▼")}
                     </button>
                   </div>
                   {showKeyInput && (
@@ -1197,18 +1133,18 @@
                         type="password"
                         value={apiKeyInput}
                         onChange={(e) => setApiKeyInput(e.target.value)}
-                        placeholder="請貼上 Google Gemini API Key (AIzaSy...)"
+                        placeholder="請貼上 Google Gemini API Key (例如: AIzaSy...)"
                         className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-stone-800 font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                       />
                       <div className="flex items-center justify-between text-[10px] text-amber-800">
-                        <span>未填寫時將自動啟用離線智慧模組</span>
+                        <span>需要 API Key 才能執行 AI 即時規劃</span>
                         <a
                           href="https://aistudio.google.com/app/apikey"
                           target="_blank"
                           rel="noreferrer"
                           className="font-bold underline text-amber-900"
                         >
-                          免費獲取 Key ↗
+                          免費申請 Key ↗
                         </a>
                       </div>
                     </div>
@@ -1304,12 +1240,12 @@
                     {isGenerating ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>專家正繪製專屬手帳中，請稍候...</span>
+                        <span>Gemini AI 正深度繪製手帳中，請稍候...</span>
                       </>
                     ) : (
                       <>
                         <SketchSparkles className="w-4 h-4 text-amber-200" />
-                        <span>開始繪製專屬手繪行程</span>
+                        <span>開始繪製專屬手繪行程 (Gemini AI)</span>
                       </>
                     )}
                   </button>
