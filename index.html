@@ -38,6 +38,13 @@
     const { useState, useEffect, useMemo } = React;
 
     // ==========================================
+    // 🔑 在此處直接填入您的 Google Gemini API Key
+    // ==========================================
+    // 將引號內的文字替換為您的 API Key (例如: "AIzaSyD...")
+    // 填入後打開網頁即可自動啟用 AI 生成，無須手動在畫面輸入！
+    const DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6KbhRPEjC49kV0gg4wcSYLAxbwQaIgoxJFnPTCONcRyrw";
+
+    // ==========================================
     // 手繪風格圖標與插圖組件 (純 SVG 繪製)
     // ==========================================
     const SketchPin = ({ className = "w-5 h-5" }) => (
@@ -503,8 +510,8 @@
       const [showPlannerModal, setShowPlannerModal] = useState(false);
       const [toastMessage, setToastMessage] = useState("");
       const [isGenerating, setIsGenerating] = useState(false);
-      const [apiKeyInput, setApiKeyInput] = useState("");
-      const [showKeyInput, setShowKeyInput] = useState(false);
+      const [apiKeyInput, setApiKeyInput] = useState(DEFAULT_GEMINI_API_KEY);
+      const [showKeyInput, setShowKeyInput] = useState(!DEFAULT_GEMINI_API_KEY);
 
       const [plannerForm, setPlannerForm] = useState({
         destination: "瑞士少女峰與策馬特",
@@ -564,7 +571,8 @@
       // AI 規劃調用 (Gemini API + 離線範本雙軌支援)
       const handleGenerateAiTrip = async () => {
         setIsGenerating(true);
-        const apiKey = apiKeyInput.trim();
+        // 優先讀取輸入框或內嵌的 DEFAULT_GEMINI_API_KEY
+        const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
 
         // 離線智慧範本生成器 (當無 API Key 或連線失敗時提供流暢備援)
         const getOfflineTemplate = () => {
@@ -670,14 +678,14 @@
 
         if (!apiKey) {
           // 無 API Key 時使用離線智慧範本快速生成
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise(r => setTimeout(r, 800));
           const offlineTrip = getOfflineTemplate();
           setTripData(offlineTrip);
           setActiveDayIndex(0);
           setActiveCategory('all');
           setIsGenerating(false);
           setShowPlannerModal(false);
-          triggerToast("✨ 已為您繪製客製行程！（輸入 API Key 可解鎖無上限真實 AI 規劃）");
+          triggerToast("✨ 已為您繪製客製行程！（內嵌 API Key 可解鎖無限制真實 AI 規劃）");
           return;
         }
 
@@ -739,7 +747,7 @@
           setActiveDayIndex(0);
           setActiveCategory('all');
           setShowPlannerModal(false);
-          triggerToast("🔑 API Key 驗證未過或連線受限，已切換至離線智慧範本！");
+          triggerToast("🔑 API Key 連線異常或受限，已切換至離線智慧範本！");
         }
       };
 
