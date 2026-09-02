@@ -1424,18 +1424,14 @@
         }
       };
 
-      // 100% 純 Gemini API 行程規劃生成
+      // 100% 純 Gemini API 行程規劃生成 (採用 gemini-3-flash-preview，平台環境自動注入 Key)
       const handleGenerateAiTrip = async () => {
-        const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
-        
-        if (!apiKey) {
-          setShowKeyInput(true);
-          triggerToast("⚠️ 請先輸入 Google Gemini API Key 才能開始 AI 規劃！");
-          return;
-        }
+        const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY || "").trim();
 
         setIsGenerating(true);
-        localStorage.setItem("GEMINI_KEY", apiKey);
+        if (apiKey) {
+          localStorage.setItem("GEMINI_KEY", apiKey);
+        }
 
         const targetDays = Math.min(Math.max(Number(plannerForm.daysCount) || 1, 1), 30);
 
@@ -1447,7 +1443,7 @@
 1. 使用者指定的旅行天數為【${targetDays} 天】。
 2. 回傳的 JSON 根物件中的 "daysCount" 必須等於 ${targetDays}。
 3. "days" 陣列中必須『精確包含 ${targetDays} 個天數物件』，從 day: 1, day: 2 一路完整寫到 day: ${targetDays}！
-4. 絕對不可在中斷處省略或寫「以此類推」！無論天數是幾天，每一天都必須有豐富真實的行程內容。
+4. 絕對不可在中斷處省略或寫「以此類推」！每一天都必須有豐富真實的行程內容。
 5. 每一天請安排 2~4 個高水準項目 (attraction, food, transport, hotel)，包含景點、名店必吃/必點/必買、交通/自駕時間、預約代號與導遊私房故事。
 
 JSON 結構規範：
@@ -1510,7 +1506,7 @@ JSON 結構規範：
         const userQuery = `【任務需求】：請為我規劃剛好【${targetDays} 天】的完整且高度詳細的旅行手帳！
 - 出發地：${plannerForm.departureCity || '台灣桃園'}
 - 目的地：${plannerForm.destination}
-- 旅行天數：嚴格要求剛好【${targetDays} 天】（days 陣列必須包含 ${targetDays} 筆資料，從第 1 天一路連續排列至第 ${targetDays} 天，不可中斷）
+- 旅行天數：嚴格要求剛好【${targetDays} 天】（days 陣列必須包含 ${targetDays} 筆資料，從第 1 天連續排列至第 ${targetDays} 天）
 - 同行成員：${plannerForm.companion}
 - 預算期望：${plannerForm.budget}
 - 風格與偏好：${plannerForm.stylePreference}
@@ -1526,65 +1522,58 @@ JSON 結構規範：
           }
         };
 
-        const modelEndpoints = [
-          "gemini-2.5-flash",
-          "gemini-2.5-flash-lite"
-        ];
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
         let success = false;
         let resultJson = null;
         let lastErrorMessage = "";
 
-        for (const modelName of modelEndpoints) {
-          if (success) break;
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-          
-          for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-              const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(apiPayload)
-              });
+        // 採用指數退避重試機制
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(apiPayload)
+            });
 
-              if (!response.ok) {
-                const errData = await response.json().catch(() => null);
-                const errMsg = errData?.error?.message || `HTTP ${response.status}`;
-                if (response.status === 400 && errMsg.includes("API key")) {
-                  lastErrorMessage = "API Key 格式不正確，請確認複製是否完整";
-                } else if (response.status === 403 || response.status === 401) {
-                  lastErrorMessage = "API Key 無效或尚未在 Google Cloud 啟用 Generative Language API";
-                } else if (response.status === 429) {
-                  lastErrorMessage = "超出 Google 呼叫頻率限制 (Quota exceeded)，請稍後再試";
-                } else {
-                  lastErrorMessage = errMsg;
-                }
-                throw new Error(lastErrorMessage);
+            if (!response.ok) {
+              const errData = await response.json().catch(() => null);
+              const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+              if (response.status === 400 && (errMsg.includes("API key") || !apiKey)) {
+                lastErrorMessage = "若在 GitHub Pages 等外部網站執行，請在設定中填入您的 Gemini API Key";
+              } else if (response.status === 403 || response.status === 401) {
+                lastErrorMessage = "API Key 無效或尚未在 Google Cloud 啟用 Generative Language API";
+              } else if (response.status === 429) {
+                lastErrorMessage = "超出 Google 呼叫頻率限制 (Quota exceeded)，請稍後再試";
+              } else {
+                lastErrorMessage = errMsg;
+              }
+              throw new Error(lastErrorMessage);
+            }
+
+            const data = await response.json();
+            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (textResponse) {
+              let cleaned = textResponse.trim();
+              if (cleaned.startsWith("```json")) {
+                cleaned = cleaned.replace(/^```json\s*/i, "").replace(/\s*```$/, "");
+              } else if (cleaned.startsWith("```")) {
+                cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
               }
 
-              const data = await response.json();
-              const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-              if (textResponse) {
-                let cleaned = textResponse.trim();
-                if (cleaned.startsWith("```json")) {
-                  cleaned = cleaned.replace(/^```json\s*/i, "").replace(/\s*```$/, "");
-                } else if (cleaned.startsWith("```")) {
-                  cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
-                }
-
-                resultJson = JSON.parse(cleaned);
-                if (resultJson && Array.isArray(resultJson.days) && resultJson.days.length > 0) {
-                  resultJson.daysCount = resultJson.days.length;
-                  success = true;
-                  break;
-                }
+              resultJson = JSON.parse(cleaned);
+              if (resultJson && Array.isArray(resultJson.days) && resultJson.days.length > 0) {
+                resultJson.daysCount = resultJson.days.length;
+                success = true;
+                break;
               }
-            } catch (err) {
-              lastErrorMessage = err.message || "網路連線異常";
-              if (attempt < 2) {
-                await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
-              }
+            }
+          } catch (err) {
+            lastErrorMessage = err.message || "網路連線異常";
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
             }
           }
         }
@@ -2092,7 +2081,7 @@ JSON 結構規範：
                       onClick={() => setShowKeyInput(!showKeyInput)}
                       className="text-[11px] text-amber-800 underline font-bold"
                     >
-                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已設定 (點擊修改) ▼" : "輸入 Key ▼")}
+                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已自訂 Key (點擊修改) ▼" : "自訂 Key (部署至個人網站時填寫) ▼")}
                     </button>
                   </div>
                   {showKeyInput && (
@@ -2101,11 +2090,11 @@ JSON 結構規範：
                         type="password"
                         value={apiKeyInput}
                         onChange={(e) => setApiKeyInput(e.target.value)}
-                        placeholder="請貼上 Google Gemini API Key (例如: AIzaSy...)"
+                        placeholder="在 GitHub Pages 等外部網站運行時請貼上 Key (AIzaSy...)"
                         className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-stone-800 font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                       />
                       <div className="flex items-center justify-between text-[10px] text-amber-800">
-                        <span>需要 API Key 才能執行 AI 即時規劃</span>
+                        <span>預覽環境留空即可直接使用；外部部署需填寫</span>
                         <a
                           href="https://aistudio.google.com/app/apikey"
                           target="_blank"
