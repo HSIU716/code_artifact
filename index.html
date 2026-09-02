@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>旅人手帳 - 手繪風智能旅遊導遊小工具</title>
+  <title>旅人手帳 - 手繪風智能旅遊導遊小工具 (14天深度手帳版)</title>
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -78,6 +78,27 @@
     // 🔑 在此處填入您的 Google Gemini API Key (選填，亦可於介面輸入)
     // ==========================================
     const DEFAULT_GEMINI_API_KEY = "";
+
+    // 安全剪貼簿複製函式 (避免 iframe 權限策略封鎖 navigator.clipboard.writeText)
+    const copyTextToClipboard = (text) => {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return success;
+      } catch (err) {
+        console.warn('Clipboard copy error:', err);
+        return false;
+      }
+    };
 
     // ==========================================
     // 手繪風格圖標與插圖組件 (純 SVG 繪製)
@@ -165,102 +186,115 @@
       </svg>
     );
 
+    // 手繪飛機圖標 (用於標註預估航行與飛行時數)
+    const SketchPlane = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7c-.8-.2-1.5.1-1.8.7l-.5 1 5.5 3.5-3.5 3.5-2-.5-.8.8 2.2 1.5 1.5 2.2.8-.8-.5-2 3.5-3.5 3.5 5.5 1-.5c.6-.3.9-1 .7-1.8z" />
+      </svg>
+    );
+
     const TapeEffect = ({ color = "bg-amber-100/80", className = "" }) => (
       <div className={`h-4 w-16 -rotate-3 rounded-xs border-t border-b border-amber-300/40 shadow-xs backdrop-blur-xs ${color} ${className}`} />
     );
 
+    // 手繪踩點印章 SVG (模擬朱肉紅印)
+    const SketchStamp = ({ className = "w-10 h-10" }) => (
+      <div className={`relative inline-flex items-center justify-center -rotate-12 border-2 border-dashed border-rose-600 rounded-full text-rose-600 bg-rose-50/70 p-1 font-black shadow-xs ${className}`}>
+        <span className="text-[10px] tracking-tighter leading-none font-serif">已踩點</span>
+      </div>
+    );
+
     // ==========================================
-    // 預設示範行程：京都宇治楓葉慢活自駕 5 日
+    // 預設經典 14 日深度行程：日本關西與近畿山海自駕大環線
     // ==========================================
     const DEFAULT_TRIP = {
-      destination: "日本・京都與宇治秘境自駕行",
-      subtitle: "秋季紅葉古寺、茶香與米其林私房料理探索",
-      daysCount: 5,
-      companion: "情侶 / 雙人自由行",
-      budget: "中高預算 (約 NT$ 45,000 / 人)",
-      season: "秋季 (11月中旬・紅葉季)",
+      destination: "日本關西與近畿・山海秘境自駕大縱走 14 日",
+      subtitle: "京都古剎、奈良古都、海之京都舟屋、城崎名湯與神戶璀璨夜景全紀錄",
+      daysCount: 14,
+      companion: "情侶 / 夫妻 / 深度漫遊者",
+      budget: "精緻中高預算 (約 NT$ 85,000 / 人)",
+      season: "秋高氣爽紅葉季 (11月中旬)",
+      flightEstimate: "台灣桃園 (TPE) 直飛關西國際機場 (KIX) 約 2 小時 40 分鐘；出關後取車自駕",
       geographyOverview: {
-        topography: "京都盆地地形，三面環山，宇治川流域濕度較高，山區與市區溫差顯著。",
-        climate: "秋高氣爽但日夜溫差高達 10~12°C，清晨及傍晚帶有清涼山風，偶有地形微雨。",
-        safetyHealth: "步道石階長青苔易滑，建議穿著抓地力佳健走鞋；隨身攜帶保溫瓶與潤喉糖。",
-        packingSummary: "洋蔥式穿法（發熱衣+羊毛開襟衫+防風外套）、防滑健行鞋、輕量折傘、保濕乳液。"
+        topography: "涵蓋京都盆地、奈良丘陵、高野山高原（標高800m）、瀨戶內海海岸及日本海丹後海岸，地形豐富多變。",
+        climate: "秋季日夜溫差大（8°C ~ 20°C），高野山與日本海沿岸體感較為寒涼，偶有山區地形微雨與海風。",
+        safetyHealth: "高山與海邊風大，需備妥防風保暖衣物；山區石階青苔易滑，建議著抓地力佳健走鞋；自駕注意日本右駕與禮讓行人規則。",
+        packingSummary: "洋蔥式多層穿搭（發熱衣+羊毛衫+防風防水外套）、好走防滑鞋、輕便雨具、保濕護唇膏、國際駕照與日文譯本。"
       },
       days: [
         {
           day: 1,
           date: "2026-11-15 (週日)",
-          title: "嵐山古風自駕・竹林茶席與私房豆腐",
+          title: "啟程抵達關西・嵐山竹林幽徑與溫泉迎賓",
           cityOrArea: "京都・嵐山 / 嵯峨野",
           weather: {
-            temp: "11°C ~ 19°C",
-            condition: "晴時多雲 (舒服秋涼)",
+            temp: "11°C ~ 18°C",
+            condition: "晴時多雲 (涼爽宜人)",
             icon: "sunny",
             humidity: "58%",
-            clothingTip: "早晚穿防風長版大衣，午後散步單穿針織衫即可，建議搭配輕暖圍巾。",
-            geographyNote: "嵐山保津川沿岸風勢稍大，水氣充足，體感比市區低 2°C。",
-            safetyHealthTip: "嵯峨野小徑車輛少但路幅窄，自駕請減速禮讓步行遊客與人力車。"
+            clothingTip: "早晚稍涼，建議著長袖襯衫外搭防風風衣外套，隨身準備輕薄圍巾。",
+            geographyNote: "嵐山保津川沿岸水氣充足，清晨傍晚體感較市區略低 2°C。",
+            safetyHealthTip: "取車後初次適應右駕，行經嵐山觀光街道請減速慢行，禮讓行人與人力車。"
           },
           items: [
             {
               id: "d1-1",
-              time: "09:30",
-              type: "attraction",
-              title: "嵐山渡月橋 & 天龍寺曹源池庭園",
-              locationName: "天龍寺 (Tenryu-ji)",
-              navQuery: "Tenryu-ji Temple Kyoto",
-              duration: "2.5 小時",
-              description: "名列世界文化遺產，漫步於曹源池借景嵐山的迴遊式庭園，秋天紅葉倒映池水如夢似幻。",
-              mustBuy: ["天龍寺限定結緣御守", "嵐山和紙香包"],
+              time: "10:30",
+              type: "transport",
+              title: "關西國際機場取車 往 京都嵐山",
+              locationName: "Times Car Rental 關西空港店",
+              navQuery: "Times Car Rental Kansai Airport",
+              transitTime: "🛫 飛行 2h40m + 機場自駕 75 分鐘",
+              duration: "1.5 小時",
+              description: "辦理取車手續，設定車載中文化 GPS 與 ETC 卡，行經阪神高速公路直奔京都嵐山。",
+              bookingCode: "CAR-KIX-202611",
               storyAndTips: {
-                story: "天龍寺由室町幕府初代將軍足利尊氏為撫慰後醍醐天皇亡靈而建，曹源池是日本現存最早的史跡特別名勝庭園。",
-                culturalTip: "進入方丈殿請脫鞋並輕聲細語，禁止在榻榻米上飲食或使用三腳架攝影。",
-                selfDriveTip: "天龍寺前專用停車場（¥1,000/次）上午10點前抵達通常有空位。"
+                selfDriveTip: "日本高速公路過路費可直接走 ETC 車道，請確保 ETC 卡插卡正確並聽到逼聲提示。"
               }
             },
             {
               id: "d1-2",
-              time: "12:15",
+              time: "13:00",
               type: "food",
-              title: "嵯峨野 嵯峨豆腐稻 (北店)",
+              title: "嵐山 嵯峨豆腐稻 (北店) 午膳",
               locationName: "嵯峨とうふ 稲 北店",
               navQuery: "Saga Tofu Ine North Branch Kyoto",
               duration: "1.5 小時",
-              description: "緊鄰竹林小徑入口，以京都純淨伏流水現磨手工湯葉（生豆皮）與胡麻豆腐聞名。",
+              description: "緊鄰竹林小徑入口，以京都頂級軟水現磨手工生湯葉（豆皮）與特製胡麻豆腐聞名。",
               mustEat: ["手作生湯葉御膳", "胡麻豆腐", "櫻花葛餅"],
-              mustOrder: ["嵐山特選御膳 (含炙燒白味噌豆皮)"],
+              mustOrder: ["嵐山特選御膳 (炙燒白味噌湯葉)"],
               bookingCode: "INE-RSV-8819",
               storyAndTips: {
-                story: "京都傳統水質極為軟嫩清甜，造就數百年頂級豆腐工藝，古時僧侶修行的素食精進料理在此昇華為極致美食。",
-                culturalTip: "日本吃湯豆腐建議先品嚐原味甘甜，再沾少量特製高湯醬油與山葵。"
+                story: "京都盆地擁有純淨極軟水質，僧侶自古將大豆精進料理昇華為國寶級的豆腐美饌。"
               }
             },
             {
               id: "d1-3",
-              time: "14:30",
+              time: "15:00",
               type: "attraction",
-              title: "常寂光寺・幽靜紅葉階梯秘境",
-              locationName: "常寂光寺 (Jojakko-ji)",
-              navQuery: "Jojakko-ji Temple Kyoto",
-              duration: "2 小時",
-              description: "依小倉山而建的古剎，多寶塔四周被如火紅葉圍繞，可俯瞰整個京都盆地壯麗全景。",
-              mustBuy: ["小倉百人一首紀念木籤", "楓葉拓印明信片"],
+              title: "天龍寺 曹源池庭園 & 嵐山竹林小徑",
+              locationName: "天龍寺 (Tenryu-ji)",
+              navQuery: "Tenryu-ji Temple Kyoto",
+              duration: "2.5 小時",
+              description: "名列世界文化遺產，借景嵐山壯麗秋色的迴遊式庭園，隨後漫步於幽靜翠綠的竹林隧道。",
+              mustBuy: ["天龍寺限定結緣御守", "嵐山竹製和風書籤"],
               storyAndTips: {
-                story: "此處相傳是平安時代歌人藤原定家編纂《小倉百人一首》的和歌故居遺址，充滿詩意文學靈魂。",
-                photoSpot: "仁王門通往本堂的茅草屋頂石階兩側，下午 3 點斜陽透過紅葉落光斑最美。"
+                story: "曹源池由國師夢窗疏石精心造園，是日本現存最早被指定為特別名勝史跡的禪宗庭園。",
+                photoSpot: "大方丈殿外緣廊前拍攝紅葉借景倒映曹源池，畫面如詩如畫。"
               }
             },
             {
               id: "d1-4",
-              time: "17:30",
-              type: "transport",
-              title: "行經保津川觀景自駕道 往 嵐山溫泉旅宿",
+              time: "18:00",
+              type: "hotel",
+              title: "嵐山溫泉 花傳抄（天然溫泉下榻）",
               locationName: "嵐山溫泉 花傳抄",
               navQuery: "Kadensho Arashiyama Onsen Kyoto",
-              duration: "40 分鐘",
-              description: "沿著桂川景觀公路徐行，避開傍晚市區塞車，直接抵達日式天然溫泉會館。",
-              bookingCode: "HOTEL-KD-202611",
+              duration: "入住休息",
+              description: "全館榻榻米鋪設的和風溫泉旅館，享有五種不同風格的私房湯屋，洗滌第一天的舟車勞頓。",
+              bookingCode: "HTL-KD-9912",
               storyAndTips: {
-                selfDriveTip: "飯店附設免費住客立體停車場，導航設定後直接開至迎賓車道即可。"
+                culturalTip: "館內免費提供多款花色浴衣挑選，晚餐前可先至露天風呂享受弱鹼性天然溫泉。"
               }
             }
           ]
@@ -268,31 +302,32 @@
         {
           day: 2,
           date: "2026-11-16 (週一)",
-          title: "金閣光影與大德寺茶道禪意之日",
+          title: "金閣倒影與北野禪風・大德寺茶道之日",
           cityOrArea: "京都・北野 / 鷹峯",
           weather: {
-            temp: "10°C ~ 18°C",
-            condition: "晴朗微風",
+            temp: "10°C ~ 17°C",
+            condition: "晨間微涼，午後晴朗",
             icon: "sunny",
             humidity: "52%",
-            clothingTip: "白天陽光溫煦，適合著薄長袖上衣加針織背心，傍晚加厚外套。",
-            geographyNote: "北區靠近比叡山山腳，空氣清新，午後地表降溫快。",
-            safetyHealthTip: "寺院多為天然木質階梯與石板路，請留意腳下防滑。"
+            clothingTip: "針織上衣搭配輕便羊毛開襟衫，早晚外出加羽絨背心或防風外套。",
+            geographyNote: "京都北部背靠比叡山與愛宕山，傍晚山風漸起降溫迅速。",
+            safetyHealthTip: "寺廟參拜需脫鞋走在木造長廊上，建議穿著厚底舒適保暖襪。"
           },
           items: [
             {
               id: "d2-1",
               time: "09:00",
               type: "attraction",
-              title: "鹿苑寺（金閣寺）晨光鏡湖池倒影",
+              title: "鹿苑寺（金閣寺）鏡湖池金色晨光",
               locationName: "金閣寺 (Kinkaku-ji)",
               navQuery: "Kinkaku-ji Temple Kyoto",
+              transitTime: "🚗 自駕約 25 分鐘",
               duration: "1.5 小時",
-              description: "三層樓閣貼滿純金箔，頂端立有象徵吉祥的金銅鳳凰，襯托楓紅與鏡湖池倒影震撼心靈。",
-              mustBuy: ["舍利殿御守護符（兼具門票功能）", "純金箔金平糖"],
+              description: "三層樓閣外層覆蓋純金箔，頂立吉祥金銅鳳凰，與鏡湖池楓紅倒影交織出極致奢華之美。",
+              mustBuy: ["舍利殿御守護符（兼門票）", "金閣純金箔金平糖"],
               storyAndTips: {
-                story: "由將軍足利義滿於1397年建造，巧妙結合公家寢殿造、武家住宅與禪宗佛堂三種截然不同的建築風格。",
-                photoSpot: "入口驗票後轉角的第一個鏡湖池觀景台，上午 9:00~10:30 順光拍攝金箔反光最耀眼。"
+                story: "足利義滿將軍於1397年建造，融合公家寢殿、武家書院與禪宗佛堂三種截然不同的時代建築精髓。",
+                photoSpot: "入口驗票後的第一個轉角觀景平台，上午 9:30 前順光拍攝金箔反光最耀眼。"
               }
             },
             {
@@ -303,43 +338,41 @@
               locationName: "粟餅所 澤屋 (Sawaya)",
               navQuery: "Sawaya Awamochi Kyoto",
               duration: "45 分鐘",
-              description: "創業於天正十五年（1587年）的400年老店，現點現做的小米麻糬，軟糯不甜膩。",
-              mustEat: ["現作紅豆泥粟餅", "特濃黃豆粉小米年糕"],
-              mustOrder: ["紅白粟餅雙拼抹茶套餐"],
+              description: "創業於 1587 年的 400 年點心老舖，現點現做的小米麻糬，裹覆綿密紅豆泥與黃豆粉。",
+              mustEat: ["現作紅豆泥粟餅", "黃豆粉小米年糕"],
+              mustOrder: ["紅白粟餅雙拼配宇治抹茶套餐"],
               storyAndTips: {
-                story: "豐臣秀吉在北野天滿宮舉辦北野大茶會時，相傳曾親口讚賞過澤屋的精湛粟餅手藝。",
-                culturalTip: "店內空間小巧，現做粟餅賞味期僅有半天，建議在店內新鮮享用。"
+                story: "豐臣秀吉於北野天滿宮舉辦大茶會時，相傳曾親臨品嚐並大加讚賞其質樸古法滋味。"
               }
             },
             {
               id: "d2-3",
               time: "13:30",
               type: "attraction",
-              title: "大德寺高桐院・竹林苔原與楓葉地毯",
+              title: "大德寺 高桐院（枯山水與綠苔參道）",
               locationName: "大德寺 高桐院 (Koto-in)",
               navQuery: "Daitoku-ji Koto-in Kyoto",
               duration: "2 小時",
-              description: "戰國名將兼茶道名家細川忠興建立的塔頭，石板參道兩側覆蓋厚實翠綠青苔與落楓。",
+              description: "茶聖千利休修禪之地，長長的石板參道兩側鋪滿厚實翠綠青苔與落楓，散發極致侘寂美學。",
               mustBuy: ["高桐院枯山水明信片", "大德寺一休納豆"],
               storyAndTips: {
-                story: "千利休曾在大德寺修禪，院內的意北軒為千利休茶室遺構，散發深邃無比的『侘寂（Wabi-Sabi）』美學。",
-                culturalTip: "若有幸參與茶席體驗，右手持茶碗、左手托底，順時針旋轉兩次避開茶碗正面再飲用。"
+                culturalTip: "若有幸參與茶室品茗體驗，右手握碗、左手托底，順時針轉兩次避開正面再飲用。"
               }
             },
             {
               id: "d2-4",
               time: "18:00",
               type: "food",
-              title: "祇園 炭火懷石 割烹 匠",
-              locationName: "祇園 割烹 肉匠 (Gion Takumi)",
+              title: "祇園 炭火懷石 肉匠 匠 (Takumi)",
+              locationName: "祇園 割烹 肉匠",
               navQuery: "Gion Kappo Kyoto",
               duration: "2 小時",
-              description: "主打當令丹波松茸、炭火近江牛與京都黑七味燉煮海鮮的極致割烹晚宴。",
+              description: "精選近江牛菲力搭配當令丹波松茸、炭火海鮮炊飯的極致秋季無菜單割烹晚宴。",
               mustEat: ["炭火備長炭近江牛菲力", "丹波松茸土瓶蒸", "鮭魚卵釜飯"],
-              mustOrder: ["季節廚師無菜單懷石套餐 (Omakase)"],
+              mustOrder: ["廚師無菜單懷石套餐 (Chef Omakase)"],
               bookingCode: "GION-OMK-7741",
               storyAndTips: {
-                culturalTip: "高級割烹料理店請避免噴灑過於濃烈之香水，以利細細品嗅柴魚高湯與松茸之本味。"
+                culturalTip: "造訪高級割烹料理店請避免噴灑濃烈香水，以便品味細緻的高湯本味。"
               }
             }
           ]
@@ -347,62 +380,61 @@
         {
           day: 3,
           date: "2026-11-17 (週二)",
-          title: "宇治川漫步・世界遺產平等院與抹茶究極朝聖",
-          cityOrArea: "宇治市 (Uji)",
+          title: "東山古韻・清水舞台懸空美學與三年坂漫步",
+          cityOrArea: "京都・東山 / 清水",
           weather: {
-            temp: "12°C ~ 20°C",
-            condition: "早晨薄霧，午後艷陽",
+            temp: "12°C ~ 19°C",
+            condition: "秋陽明媚",
             icon: "sunny",
-            humidity: "65%",
-            clothingTip: "宇治川畔風涼，建議搭配防風薄外套，午後穿著棉質襯衫即可。",
-            geographyNote: "宇治川自琵琶湖流出，清晨河面常有浪漫晨霧，水氣充足盛產優質茶葉。",
-            safetyHealthTip: "宇治川中之島沙洲石子路多，建議穿著平底休閒鞋。"
+            humidity: "50%",
+            clothingTip: "舒適便服與好穿脫的健步球鞋，隨身準備大容量手提袋盛裝伴手禮。",
+            geographyNote: "清水坂、產寧坂為緩升斜坡石階步道，石板路面稍硬。",
+            safetyHealthTip: "東山遊客人潮眾多，自駕建議停放在五條坂公營地下停車場後步行漫遊。"
           },
           items: [
             {
               id: "d3-1",
-              time: "09:30",
+              time: "08:30",
               type: "attraction",
-              title: "平等院 鳳凰堂 & 鳳翔館博物館",
-              locationName: "平等院 鳳凰堂 (Byodoin Temple)",
-              navQuery: "Byodoin Temple Uji",
+              title: "清水寺 本堂清水舞台 & 音羽之瀧",
+              locationName: "清水寺 (Kiyomizu-dera)",
+              navQuery: "Kiyomizu-dera Kyoto",
               duration: "2.5 小時",
-              description: "日幣萬圓大鈔背面鳳凰與十圓硬幣上的國寶殿堂，阿字池畔呈現西方極樂淨土的具象化。",
-              mustBuy: ["平等院限定純銅鳳凰書籤", "極樂淨土梵鐘香"],
+              description: "未用一根鐵釘由 139 根櫸木懸空支撐的國寶舞台，俯瞰錦繡楓谷，排隊汲取三道延命靈泉。",
+              mustBuy: ["清水寺頭痛平癒守", "產寧坂七味家極上七味粉"],
               storyAndTips: {
-                story: "藤原賴通於1053年將父親藤原道長的別莊改建為佛寺，內部供奉高達2.8公尺的阿彌陀如來坐像及52尊雲中供養菩薩。",
-                photoSpot: "正面隔著阿字池，用 10 圓硬幣置於相機前前景對焦鳳凰堂，極具紀念趣味。"
+                story: "日本名諺『從清水舞台跳下』比喻破釜沉舟的非凡決心；音羽之瀧三道清泉象徵健康、學業與良緣，僅能選一道飲用。",
+                photoSpot: "從奧之院迴廊回頭拍攝清水舞台與滿山紅葉，為京都代表性取景視角。"
               }
             },
             {
               id: "d3-2",
-              time: "12:30",
+              time: "11:30",
               type: "food",
-              title: "中村藤吉 本店・宇治百年茶寮",
-              locationName: "中村藤吉 本店 (Nakamura Tokichi Main Store)",
-              navQuery: "Nakamura Tokichi Main Store Uji",
+              title: "二年坂 奧丹清水 400年湯豆腐名店",
+              locationName: "總本家 奧丹清水 (Okutan Kiyomizu)",
+              navQuery: "Okutan Kiyomizu Kyoto",
               duration: "1.5 小時",
-              description: "創立於安政元年的茶商巨擘，在百年町家土藏造院落中品嚐以竹筒盛裝的手工抹茶生茶凍。",
-              mustEat: ["竹筒生茶凍（生ちゃぜりい）", "現磨抹茶冷麵蕎麥", "濃茶霜淇淋"],
-              mustOrder: ["季節限定 栗子蒙布朗抹茶芭菲"],
-              mustBuy: ["初昔 / 祥の昔 典藏抹茶粉", "抹茶千層派禮盒"],
-              bookingCode: "NAKA-WAIT-QR",
+              description: "創業於 1635 年的日本最古老湯豆腐老店，在枯山水日式庭園中品嚐純手工有機黃豆木棉豆腐。",
+              mustEat: ["有機豆腐御膳", "胡麻冷奴豆腐", "田樂味噌烤豆腐串"],
+              mustOrder: ["總本家傳統純豆腐套餐"],
+              bookingCode: "OKU-RSV-5521",
               storyAndTips: {
-                story: "中村藤吉曾多次榮膺日本皇室御用茶銘柄，昔日茶商驗茶用的『黑室』至今仍完整保存於本店內。"
+                culturalTip: "先品嚐高湯中豆腐的原味甘甜，再沾少量特製醬油、生薑末與細蔥享用。"
               }
             },
             {
               id: "d3-3",
-              time: "15:00",
+              time: "14:00",
               type: "attraction",
-              title: "宇治神社 & 宇治上神社（日本最古老神社建築）",
-              locationName: "宇治上神社 (Ujigami Shrine)",
-              navQuery: "Ujigami Shrine Uji",
-              duration: "1.5 小時",
-              description: "隱身於朝日山山腳的日本最古老神社本殿，以獨特的『回頭兔（見返り兎）』指引良善之路由名。",
-              mustBuy: ["手繪彩色兔子神籤陶偶", "桐原水清酒繪馬"],
+              title: "八坂神社 & 花見小路藝伎茶屋街散策",
+              locationName: "八坂神社 (Yasaka Shrine)",
+              navQuery: "Yasaka Shrine Kyoto",
+              duration: "2 小時",
+              description: "京都祇園祭總本社，漫步穿過舞殿紅色提燈群，步入兩側林立格子門町家的花見小路。",
+              mustBuy: ["美御前社美容水神符", "祇園和紙吸油面紙"],
               storyAndTips: {
-                story: "相傳莵道稚郎子王子迷路時，有一隻聰慧靈兔頻頻回頭指引方向，因此兔子在此被奉為指引幸福人生明路的使者。"
+                culturalTip: "花見小路禁止在未經許可下追拍藝伎，請保持禮貌距離與安靜。"
               }
             }
           ]
@@ -410,60 +442,63 @@
         {
           day: 4,
           date: "2026-11-18 (週三)",
-          title: "伏見千本鳥居・伏見酒藏與石牆小徑探秘",
-          cityOrArea: "京都・伏見 / 宇治川南岸",
+          title: "宇治茶香飄溢・世界遺產平等院與百年茶寮",
+          cityOrArea: "京都・宇治 (Uji)",
           weather: {
-            temp: "9°C ~ 17°C",
-            condition: "多雲時陰，傍晚清涼",
-            icon: "cloudy",
-            humidity: "60%",
-            clothingTip: "稻荷山健行路程較長，建議穿吸濕排汗內層，並備好輕便保暖外套防風。",
-            geographyNote: "稻荷山地勢多石階斜坡，林木茂密陰涼，自駕往返市區動線流暢。",
-            safetyHealthTip: "爬稻荷山請留意體力分配，中途設有多處茶屋可補充水分。"
+            temp: "11°C ~ 20°C",
+            condition: "晨霧午後晴",
+            icon: "sunny",
+            humidity: "65%",
+            clothingTip: "宇治川畔水氣較多風勢微涼，建議穿著防風薄外套，內搭純棉長袖。",
+            geographyNote: "宇治川自琵琶湖流出，清晨常有浪漫河霧，滋養出全日本最高品質的宇治綠茶。",
+            safetyHealthTip: "宇治川中之島沙洲碎石步道多，建議穿著平底防滑健走鞋。"
           },
           items: [
             {
               id: "d4-1",
-              time: "08:30",
+              time: "09:30",
               type: "attraction",
-              title: "伏見稻荷大社・清晨千本鳥居秘境巡禮",
-              locationName: "伏見稻荷大社 (Fushimi Inari Taisha)",
-              navQuery: "Fushimi Inari Taisha Kyoto",
+              title: "平等院 鳳凰堂 & 鳳翔館國寶展",
+              locationName: "平等院 鳳凰堂 (Byodoin)",
+              navQuery: "Byodoin Temple Uji",
+              transitTime: "🚗 自駕約 35 分鐘",
               duration: "2.5 小時",
-              description: "全日本三萬座稻荷神社總本宮，數以萬計的朱紅色鳥居如隧道般蜿蜒整座稻荷山。",
-              mustBuy: ["白狐造型祈願繪馬", "金運御守與開運狐狸鈴鐺"],
+              description: "日幣萬圓大鈔背面鳳凰與十圓硬幣上的國寶殿堂，阿字池畔完美具象化西方極樂淨土。",
+              mustBuy: ["平等院限定純銅鳳凰書籤", "極樂淨土梵鐘線香"],
               storyAndTips: {
-                story: "鳥居由信眾為祈求商賣繁盛或感謝心願達成而奉納，最古老的鳥居可追溯至江戶時期，朱紅顏料含丹砂能防腐驅邪。",
-                photoSpot: "清晨8:30前抵達『奧社奉拜所』前的雙分岔鳥居，最能拍出無人的神聖幽靜空景。"
+                story: "藤原賴通於 1053 年建立，內部供奉高達 2.8 公尺阿彌陀如來坐像與 52 尊雲中供養菩薩木雕。",
+                photoSpot: "手持十圓硬幣置於相機前景對焦池對岸的鳳凰堂，極富紀念趣味。"
               }
             },
             {
               id: "d4-2",
-              time: "12:00",
+              time: "12:30",
               type: "food",
-              title: "伏見 十石舟河畔 鳥せい (Tori-sei 本店)",
-              locationName: "鳥せい 本店 (Torisei)",
-              navQuery: "Torisei Honten Fushimi",
+              title: "中村藤吉 本店・宇治百年茶寮",
+              locationName: "中村藤吉 本店 (Nakamura Tokichi)",
+              navQuery: "Nakamura Tokichi Main Store Uji",
               duration: "1.5 小時",
-              description: "由近三百年清酒廠『神聖』改建而成，以酒廠名水『白菊水』烹製極品備長炭火燒鳥串燒。",
-              mustEat: ["原酒生清酒試飲", "炭火雞肉串燒拼盤", "特製酒粕拉麵"],
-              mustOrder: ["神聖酒造 藏出し原酒 (冰鎮現汲)"],
+              description: "安政元年創立的茶商巨擘，在百年町家土藏院落中品嚐以新鮮竹筒盛裝的手工抹茶生茶凍。",
+              mustEat: ["竹筒生茶凍 (生ちゃぜりい)", "現磨抹茶蕎麥涼麵", "特濃濃茶霜淇淋"],
+              mustOrder: ["季節限定 栗子蒙布朗抹茶芭菲"],
+              mustBuy: ["初昔 / 祥の昔 典藏抹茶粉", "抹茶千層夾心酥"],
+              bookingCode: "NAKA-QR-2026",
               storyAndTips: {
-                story: "伏見地下擁有全日本最頂級的優質中硬度伏流水，古稱『伏水』，造就了安土桃山時代以來的清酒聖地傳奇。"
+                story: "昔日茶商驗茶專用的『黑室』至今完整保存在本店庭園中，見證日本茶道的全盛風貌。"
               }
             },
             {
               id: "d4-3",
-              time: "14:30",
+              time: "15:00",
               type: "attraction",
-              title: "月桂冠大倉紀念館 & 伏見十石舟運河",
-              locationName: "月桂冠大倉紀念館 (Gekkeikan Okura Sake Museum)",
-              navQuery: "Gekkeikan Okura Sake Museum Fushimi",
-              duration: "2 小時",
-              description: "沿著柳樹搖曳的濠川運河漫步，探訪江戶時代白壁土藏釀酒庫房，親身品嚐清酒原酒。",
-              mustBuy: ["伏見限定大吟釀生原酒", "清酒酒粕面膜與酒粕香皂"],
+              title: "宇治上神社（日本最古老神社建築）",
+              locationName: "宇治上神社 (Ujigami Shrine)",
+              navQuery: "Ujigami Shrine Uji",
+              duration: "1.5 小時",
+              description: "隱身於朝日山麓的世界文化遺產，以獨特的『回頭靈兔』神籤指引幸福光明人生之路。",
+              mustBuy: ["手繪彩色兔子陶偶神籤", "桐原水清酒繪馬"],
               storyAndTips: {
-                culturalTip: "自駕駕駛者請嚴格遵守『酒後絕不開車』，酒廠提供專屬無酒精甘酒與極品名水試飲。"
+                story: "相傳莵道稚郎子王子迷路時，聰慧靈兔頻頻回頭引路，因此兔子被視為引領幸福的福使。"
               }
             }
           ]
@@ -471,61 +506,581 @@
         {
           day: 5,
           date: "2026-11-19 (週四)",
-          title: "錦市場廚房尋味・清水寺舞台壓軸與伴手禮大採買",
-          cityOrArea: "京都・四條 / 東山",
+          title: "朱紅千本鳥居神域・伏見酒造名水與老街燒鳥",
+          cityOrArea: "京都・伏見 (Fushimi)",
           weather: {
-            temp: "11°C ~ 19°C",
+            temp: "10°C ~ 18°C",
             condition: "晴空萬里",
             icon: "sunny",
-            humidity: "55%",
-            clothingTip: "舒適便服搭配好穿脫的球鞋，準備大容量折疊購物袋採買伴手禮。",
-            geographyNote: "東山清水坂為緩升斜坡石板街道，人潮熱絡。",
-            safetyHealthTip: "清水寺參道人潮眾多，自駕建議停放在五條坂公營地下停車場後步行。"
+            humidity: "56%",
+            clothingTip: "健行登山路線較長，建議穿著吸濕排汗內層衣與輕便好走長褲。",
+            geographyNote: "稻荷山地勢多石階斜坡，林木遮蔭茂密清爽。",
+            safetyHealthTip: "爬稻荷山請留意體力調節，中途設有多座茶屋可補充水分與歇息。"
           },
           items: [
             {
               id: "d5-1",
-              time: "09:00",
+              time: "08:30",
               type: "attraction",
-              title: "清水寺・清水舞台與音羽之瀧靈水",
-              locationName: "清水寺 (Kiyomizu-dera)",
-              navQuery: "Kiyomizu-dera Kyoto",
+              title: "伏見稻荷大社・千本鳥居山林神殿",
+              locationName: "伏見稻荷大社",
+              navQuery: "Fushimi Inari Taisha Kyoto",
+              transitTime: "🚗 自駕約 20 分鐘",
               duration: "2.5 小時",
-              description: "完全未用一根鐵釘、由139根巨大櫸木架構懸空於崖壁上的國寶木造舞台，氣勢磅礡。",
-              mustBuy: ["清水寺頭痛平癒守", "產寧坂七味家本舖極上七味粉"],
+              description: "全日本三萬座稻荷神社總本社，數萬座朱紅鳥居如隧道般蜿蜒環繞整座稻荷山。",
+              mustBuy: ["白狐造型祈願木質繪馬", "開運金運狐狸御守"],
               storyAndTips: {
-                story: "日本俗諺『從清水舞台跳下（清水の舞台から飛び降りる）』比喻下定絕心破釜沉舟。音羽之瀧三道清泉分別代表健康、學業與良緣，僅能選一道飲用以保心誠則靈。",
-                photoSpot: "站在奧之院迴廊回望清水舞台與錦繡秋楓，是京都明信片上的經典取景角。"
+                story: "信眾為祈求商賣繁盛或還願而奉納鳥居，朱紅顏料含天然丹砂能防腐驅邪。",
+                photoSpot: "早晨 9:00 前抵達『奧社奉拜所』前的雙分岔鳥居，能拍出無人的寧靜神聖空景。"
               }
             },
             {
               id: "d5-2",
               time: "12:00",
               type: "food",
-              title: "京都的廚房：錦市場漫步老街",
-              locationName: "錦市場 (Nishiki Market)",
-              navQuery: "Nishiki Market Kyoto",
-              duration: "2 小時",
-              description: "擁有400年歷史的狹長商店街，聚集上百家販售京都醬菜、玉子燒、鮮海味與和菓子的老舖。",
-              mustEat: ["三木雞卵 高湯玉子燒", "田中雞肉 炸雞球", "櫂 KAI 章魚鵪鶉蛋"],
-              mustOrder: ["現烤生蠔配柚子胡椒", "豆乳甜甜圈"],
-              mustBuy: ["打田漬物 柴漬醬菜", "有次 鍛造手工京料理菜刀"],
+              title: "伏見十石舟畔 鳥せい (Tori-sei 本店)",
+              locationName: "鳥せい 本店 (Torisei)",
+              navQuery: "Torisei Honten Fushimi",
+              duration: "1.5 小時",
+              description: "由三百年清酒廠『神聖』酒造改建，以名水『白菊水』烹製極品備長炭火燒鳥串燒。",
+              mustEat: ["冰鎮藏出し生原酒", "炭火雞肉串燒拼盤", "特製酒粕拉麵"],
+              mustOrder: ["神聖酒造 當日現汲原酒 (一合)"],
               storyAndTips: {
-                culturalTip: "為維持街道整潔與禮貌，錦市場現已禁止邊走邊吃，請在購買店家指定的專用立食區內享用完畢再離開。"
+                story: "伏見地下蘊藏全日本最清冽優質的軟硬度適中地下水『伏水』，造就數百年名酒故鄉盛譽。"
               }
             },
             {
               id: "d5-3",
-              time: "15:00",
-              type: "hotel",
-              title: "京都車站前取回行李・自駕還車與返回",
-              locationName: "京都站 Times Car Rental",
-              navQuery: "Times Car Rental Kyoto Station",
-              duration: "1 小時",
-              description: "抵達京都站完成加滿油還車檢查手續，於站內伴手禮街做最後採買後前往機場。",
-              bookingCode: "CAR-RET-09882",
+              time: "14:30",
+              type: "attraction",
+              title: "月桂冠大倉紀念館 & 伏見濠川十石舟",
+              locationName: "月桂冠大倉紀念館",
+              navQuery: "Gekkeikan Okura Sake Museum Fushimi",
+              duration: "2 小時",
+              description: "漫步在垂柳搖曳的運河邊，參觀江戶時代白壁土藏酒窖，細品職人古法釀酒工藝。",
+              mustBuy: ["伏見限定大吟釀生原酒", "純米吟釀酒粕護手霜"],
               storyAndTips: {
-                selfDriveTip: "還車前請於京都站周邊加油站加滿油（Regular 汽油），並保留加油發票供租車公司查驗。"
+                culturalTip: "自駕駕駛者請嚴格遵守『酒後絕不開車』，酒廠備有專屬無酒精甘酒與極上伏流水試飲。"
+              }
+            }
+          ]
+        },
+        {
+          day: 6,
+          date: "2026-11-20 (週五)",
+          title: "古都奈良萌鹿相遇・東大寺大佛殿與若草山夕暮",
+          cityOrArea: "奈良 (Nara)",
+          weather: {
+            temp: "9°C ~ 17°C",
+            condition: "多雲時晴，傍晚微涼",
+            icon: "sunny",
+            humidity: "55%",
+            clothingTip: "戶外開闊草地風較大，建議搭配防風夾克與舒適健走鞋。",
+            geographyNote: "奈良公園地勢開闊平緩，若草山坡度適中，夕陽時分視野極佳。",
+            safetyHealthTip: "餵食神鹿仙貝時請勿捉弄或長時間拿在手上逗弄鹿隻，餵完請張開雙手示意。"
+          },
+          items: [
+            {
+              id: "d6-1",
+              time: "09:30",
+              type: "attraction",
+              title: "東大寺 國寶大佛殿 & 奈良公園神鹿群",
+              locationName: "東大寺 (Todai-ji)",
+              navQuery: "Todai-ji Temple Nara",
+              transitTime: "🚗 自駕約 45 分鐘",
+              duration: "2.5 小時",
+              description: "世界最大木造建築，殿內供奉高達 15 公尺的盧舍那大佛，殿外草坪數百隻溫馴神鹿自由漫步。",
+              mustBuy: ["奈良鹿仙貝 (專用餵食)", "東大寺大佛開運御守"],
+              storyAndTips: {
+                story: "聖武天皇於 8 世紀為祈求國泰民安動員全國建造，大殿南大門立有雙尊八公尺金剛力士巨木雕像。"
+              }
+            },
+            {
+              id: "d6-2",
+              time: "12:30",
+              type: "food",
+              title: "志津香 釜飯 (公園店)",
+              locationName: "志津香 釜飯 公園店",
+              navQuery: "Shizuka Kamameshi Nara Park",
+              duration: "1.5 小時",
+              description: "現點現煮的傳統奈良釜飯，米飯吸滿高湯精華，底層鍋巴焦香酥脆，搭配當令鰻魚與山菜。",
+              mustEat: ["奈良七幸釜飯", "星鰻大和肉雞釜飯", "赤味噌高湯"],
+              mustOrder: ["特選七幸釜飯定食 (附天婦羅)"],
+              bookingCode: "SHIZ-NARA-401",
+              storyAndTips: {
+                culturalTip: "釜飯上桌時先吃中心鬆軟米飯，蓋上木蓋悶三分鐘後再刮取底層金黃焦脆的酥香鍋巴。"
+              }
+            },
+            {
+              id: "d6-3",
+              time: "15:00",
+              type: "attraction",
+              title: "春日大社 石燈籠萬燈籠林 & 若草山夕照",
+              locationName: "春日大社 (Kasuga Taisha)",
+              navQuery: "Kasuga Taisha Nara",
+              duration: "2.5 小時",
+              description: "朱紅神殿周圍矗立三千座石燈籠與青銅吊燈，隨後驅車至若草山山頂俯瞰奈良盆地夕陽全景。",
+              mustBuy: ["白鹿叼籤神籤木雕", "春日大社藤花紫御守"],
+              storyAndTips: {
+                photoSpot: "黃昏時分在若草山山頂觀景台，以金黃芒草與遠眺奈良古都平原作為夕陽背景。"
+              }
+            }
+          ]
+        },
+        {
+          day: 7,
+          date: "2026-11-21 (週六)",
+          title: "真言密教聖山秘境・高野山宿坊與精進料理體驗",
+          cityOrArea: "和歌山・高野山 (Koyasan)",
+          weather: {
+            temp: "4°C ~ 13°C",
+            condition: "高山晴朗，氣溫偏低",
+            icon: "cloudy",
+            humidity: "62%",
+            clothingTip: "海拔約 800 公尺氣溫顯著偏低，必須準備保暖羽絨厚外套、手套與圍巾。",
+            geographyNote: "山區高海拔盆地，八葉峰環繞，清晨易結霜降霧。",
+            safetyHealthTip: "山路彎道多，自駕請維持安全車距與車速，寺院宿坊多木造請注意保暖。"
+          },
+          items: [
+            {
+              id: "d7-1",
+              time: "10:30",
+              type: "attraction",
+              title: "高野山 壇上伽藍 & 金剛峯寺（枯山水蟠龍庭）",
+              locationName: "金剛峯寺 (Kongobuji)",
+              navQuery: "Kongobuji Temple Koyasan",
+              transitTime: "🚗 自駕山路約 90 分鐘",
+              duration: "2.5 小時",
+              description: "弘法大師空海開創的世界遺產真言密教總本山，蟠龍庭為全日本最大枯山水庭園，巨石如游龍穿梭雲海。",
+              mustBuy: ["高野山高野靈香 (極品沉香)", "弘法大師祈願御手巾"],
+              storyAndTips: {
+                story: "西元 816 年弘法大師於深山開闢修行道場，整座高野山即為一座龐大的曼荼羅佛國聖境。"
+              }
+            },
+            {
+              id: "d7-2",
+              time: "13:30",
+              type: "attraction",
+              title: "奧之院 參道杉木古樹林 & 御廟巡禮",
+              locationName: "高野山 奧之院 (Okunoin)",
+              navQuery: "Okunoin Koyasan",
+              duration: "2.5 小時",
+              description: "兩公里參道兩側聳立數百年參天巨杉與二十萬座歷史名人石碑，充滿神聖靜謐靈性氛圍。",
+              mustBuy: ["奧之院三葉松吉祥落葉籤", "高野豆腐乾貨禮盒"],
+              storyAndTips: {
+                culturalTip: "跨過御廟橋後進入空海大師入定聖域，嚴禁攝影、飲食與大聲喧嘩，需脫帽以示敬意。"
+              }
+            },
+            {
+              id: "d7-3",
+              time: "17:30",
+              type: "hotel",
+              title: "高野山 宿坊 蓮華定院（宿坊寺院泊）",
+              locationName: "高野山 蓮華定院 宿坊",
+              navQuery: "Rengejo-in Koyasan",
+              duration: "入住宿坊",
+              description: "真田幸村昔日下榻的古老寺院宿坊，享用僧侶以胡麻豆腐、山菜烹製的正統精進料理與晨間早課法會。",
+              bookingCode: "SB-KOYA-8801",
+              storyAndTips: {
+                culturalTip: "隔日清晨 6:00 建議參與寺院住持早課與冥想阿字觀體驗，沉澱心靈。"
+              }
+            }
+          ]
+        },
+        {
+          day: 8,
+          date: "2026-11-22 (週日)",
+          title: "水都大阪活力沸騰・大阪城天守閣與黑門市場舌尖尋味",
+          cityOrArea: "大阪市 (Osaka)",
+          weather: {
+            temp: "12°C ~ 19°C",
+            condition: "晴朗熱鬧",
+            icon: "sunny",
+            humidity: "53%",
+            clothingTip: "都會逛街便服，穿著舒適好走慢跑鞋，準備隨身行動電源。",
+            geographyNote: "大阪地勢平坦，市區高樓林立，午後日照充足。",
+            safetyHealthTip: "市區心齋橋與道頓堀人潮擁擠，保管好隨身貴重物品與相機。"
+          },
+          items: [
+            {
+              id: "d8-1",
+              time: "10:00",
+              type: "attraction",
+              title: "大阪城公園 & 天守閣頂樓眺望",
+              locationName: "大阪城天守閣 (Osaka Castle)",
+              navQuery: "Osaka Castle Osaka",
+              transitTime: "🚗 自駕下山至大阪約 75 分鐘",
+              duration: "2 小時",
+              description: "豐臣秀吉一統天下之象徵，巍峨白色城牆配上巨大護城河花崗巨石，八樓展望台縱覽大阪都會風光。",
+              mustBuy: ["大阪城金箔天守閣模型", "真田幸村六文錢紀念徽章"],
+              storyAndTips: {
+                story: "天守閣歷經多次戰火摧毀與重建，現存建築完美重現安土桃山時代的雄偉金碧輝煌之美。"
+              }
+            },
+            {
+              id: "d8-2",
+              time: "12:30",
+              type: "food",
+              title: "黑門市場・關西廚房海鮮美饌",
+              locationName: "黑門市場 (Kuromon Market)",
+              navQuery: "Kuromon Ichiba Market Osaka",
+              duration: "2 小時",
+              description: "聚集上百家海鮮水產、神戶牛炭烤、現開海膽與新鮮河豚刺身的美食天堂。",
+              mustEat: ["炭烤生蠔與扇貝", "黑門三平 現切黑鮪魚大腹刺身", "炙燒和牛串燒"],
+              mustOrder: ["特盛海膽鮭魚卵丼"],
+              storyAndTips: {
+                culturalTip: "市場店家備有專屬用餐立食區，購買後請在攤位專用區食用完畢再行離開。"
+              }
+            },
+            {
+              id: "d8-3",
+              time: "16:00",
+              type: "attraction",
+              title: "道頓堀 固力果跑跑人 & 心齋橋老街血拚",
+              locationName: "道頓堀 (Dotonbori)",
+              navQuery: "Dotonbori Glico Sign Osaka",
+              duration: "3 小時",
+              description: "大阪最熱鬧的運河霓虹看板街，與固力果跑跑人打卡合影，漫步於滿是藥妝潮流店的心齋橋筋商店街。",
+              mustEat: ["本家大起 章魚燒", "元祖串炸 達摩 Daruma"],
+              mustBuy: ["大阪限定食倒太郎法式烤布蕾", "章魚燒風味仙貝禮盒"]
+            }
+          ]
+        },
+        {
+          day: 9,
+          date: "2026-11-23 (週一)",
+          title: "港都神戶異國情調・北野異人館街與神戶牛鐵板燒",
+          cityOrArea: "兵庫・神戶 (Kobe)",
+          weather: {
+            temp: "11°C ~ 18°C",
+            condition: "海風徐徐，晴空萬里",
+            icon: "sunny",
+            humidity: "54%",
+            clothingTip: "港邊海風吹拂，建議穿著防風外套搭配針織衫。",
+            geographyNote: "神戶背山面海，地勢由北向南傾斜，港灣視野極為寬廣開闊。",
+            safetyHealthTip: "異人館街多為陡坡石階小巷，請穿著抓地力平底鞋漫步。"
+          },
+          items: [
+            {
+              id: "d9-1",
+              time: "10:00",
+              type: "attraction",
+              title: "北野異人館街（風見雞之館 & 萌黃之館）",
+              locationName: "北野異人館街 (Kitano Ijinkan-gai)",
+              navQuery: "Kitano Ijinkan-gai Kobe",
+              transitTime: "🚗 自駕約 45 分鐘",
+              duration: "2.5 小時",
+              description: "明治時期外國使節商人的優雅洋房聚落，紅磚屋頂上的風見雞隨海風轉動，充滿濃郁歐風情調。",
+              mustBuy: ["神戶風見雞起司布丁", "神戶六甲牧場牛乳糖"],
+              storyAndTips: {
+                photoSpot: "北野天滿神社高台石階上，可同時拍攝風見雞紅磚屋頂與遠處神戶港海天一線。"
+              }
+            },
+            {
+              id: "d9-2",
+              time: "13:00",
+              type: "food",
+              title: "Mouriya (モーリヤ) 神戶牛排鐵板燒老店",
+              locationName: "神戶牛排 Mouriya 本店",
+              navQuery: "Mouriya Kobe Beef",
+              duration: "2 小時",
+              description: "創業逾 135 年的神戶牛老牌代表，主廚於鐵板前親自炙煎頂級 A5 神戶牛沙朗與菲力。",
+              mustEat: ["A5 頂級神戶牛沙朗牛排", "赤穗天然海鹽配煎蒜片", "和牛牛脂炒飯"],
+              mustOrder: ["主廚特選極上神戶牛鐵板燒套餐"],
+              bookingCode: "MOUR-KB-1102",
+              storyAndTips: {
+                story: "神戶牛為純種但馬牛精細培育，雪花油花熔點極低，入口即化釋放無與倫比的甘甜肉汁。"
+              }
+            },
+            {
+              id: "d9-3",
+              time: "16:30",
+              type: "attraction",
+              title: "神戶港 美利堅公園 & 浪漫紅色神戶港塔",
+              locationName: "神戶美利堅公園 (Meriken Park)",
+              navQuery: "Meriken Park Kobe",
+              duration: "2 小時",
+              description: "漫步在神戶港灣木棧道，欣賞 BE KOBE 地標裝置與紅色神戶港塔夜景點燈倒影。",
+              mustBuy: ["神戶布丁 (Kobe Pudding)", "Frantz 神戶魔法壺布丁"]
+            }
+          ]
+        },
+        {
+          day: 10,
+          date: "2026-11-24 (週二)",
+          title: "三大古湯有馬溫泉・六甲山千萬夜景之夜",
+          cityOrArea: "兵庫・有馬 / 六甲山 (Arima / Rokko)",
+          weather: {
+            temp: "7°C ~ 15°C",
+            condition: "午後山區微冷，夜間寒冷",
+            icon: "sunny",
+            humidity: "58%",
+            clothingTip: "六甲山頂夜間氣溫接近 5°C，觀賞夜景必須攜帶羽絨大衣與毛帽圍巾防寒。",
+            geographyNote: "六甲山脈標高約 931 公尺，山頂風力強勁，俯瞰大阪灣景緻震撼。",
+            safetyHealthTip: "夜間山路彎多且光線昏暗，自駕下山請務必開啟大燈並減速行駛。"
+          },
+          items: [
+            {
+              id: "d10-1",
+              time: "10:30",
+              type: "attraction",
+              title: "有馬溫泉老街・金之湯 & 銀之湯巡禮",
+              locationName: "有馬溫泉 金之湯 (Kin no Yu)",
+              navQuery: "Kin no Yu Arima Onsen",
+              transitTime: "🚗 自駕約 35 分鐘",
+              duration: "3 小時",
+              description: "日本最古老三大名湯之一，浸泡含高濃度鐵分與鹽分的紅褐色『金之湯』足湯，漫步溫泉老街。",
+              mustEat: ["三津森本舖 現烤炭酸煎餅", "竹中肉店 和牛可樂餅"],
+              mustBuy: ["有馬碳酸溫泉沐浴粉", "有馬特產松茸昆布醬菜"],
+              storyAndTips: {
+                story: "豐臣秀吉與妻子寧寧曾多次造訪有馬溫泉療癒身心，老街橋頭仍立有寧寧雕像。"
+              }
+            },
+            {
+              id: "d10-2",
+              time: "14:30",
+              type: "food",
+              title: "有馬 汸庵 (Houan) 炸魚板串 & 炭酸冰淇淋",
+              locationName: "有馬 汸庵",
+              navQuery: "Houan Arima Onsen",
+              duration: "1 小時",
+              description: "現點現炸的花枝魚板串與章魚棒，配上一瓶清涼爽口的百年有馬炭酸汽水。",
+              mustEat: ["現炸章魚魚板棒", "有馬金泉炭酸汽水"]
+            },
+            {
+              id: "d10-3",
+              time: "17:30",
+              type: "attraction",
+              title: "六甲山天覽台・日本三大千萬美金夜景",
+              locationName: "六甲山天覽台 (Rokko Tenrandai)",
+              navQuery: "Rokko Garden Terrace",
+              transitTime: "🚗 自駕盤山約 25 分鐘",
+              duration: "2 小時",
+              description: "居高臨下俯瞰從神戶港一路延伸至大阪市區與關西機場的壯麗燈海璀璨夜景。",
+              storyAndTips: {
+                photoSpot: "於六甲枝垂自然體感展望台前，以幾何木構框架為前景捕捉遠方大阪灣燈火。"
+              }
+            }
+          ]
+        },
+        {
+          day: 11,
+          date: "2026-11-25 (週三)",
+          title: "國寶白鷺姬路城・明石海峽大橋與淡路島安藤忠雄巡禮",
+          cityOrArea: "兵庫・姬路 / 淡路島",
+          weather: {
+            temp: "11°C ~ 18°C",
+            condition: "海天蔚藍，微風",
+            icon: "sunny",
+            humidity: "50%",
+            clothingTip: "海島陽光充足但海風持續，著長袖棉衫搭配輕量防風大衣。",
+            geographyNote: "跨越明石海峽進入淡路島，沿海公路視野極為廣闊。",
+            safetyHealthTip: "姬路城大天守閣內部木梯極為陡峭（近 60 度），登樓請握緊扶手慢慢上樓。"
+          },
+          items: [
+            {
+              id: "d11-1",
+              time: "09:00",
+              type: "attraction",
+              title: "國寶 姬路城（白鷺城）大天守登頂",
+              locationName: "姬路城 (Himeji Castle)",
+              navQuery: "Himeji Castle",
+              transitTime: "🚗 自駕約 60 分鐘",
+              duration: "2.5 小時",
+              description: "日本首座登錄世界文化遺產之木造城堡，白漆灰泥外牆如白鷺展翅飛翔，純白壯觀無比。",
+              mustBuy: ["姬路官兵衛兜盔守", "姬路五層千層派"],
+              storyAndTips: {
+                story: "歷經數百年戰火與二戰轟炸奇蹟般毫髮無損，被譽為日本保存最完美的不戰不落之城。"
+              }
+            },
+            {
+              id: "d11-2",
+              time: "12:30",
+              type: "food",
+              title: "明石魚之棚商店街・本場明石燒 (玉子燒)",
+              locationName: "明石 魚の棚商店街 魚之棚",
+              navQuery: "Uonotana Shopping Street Akashi",
+              duration: "1.5 小時",
+              description: "品嚐滿滿雞蛋香與新鮮明石章魚丁的金黃明石燒，浸入熱柴魚高湯中入口融化。",
+              mustEat: ["明石章魚玉子燒 (明石燒)", "明石鯛魚釜飯", "現烤穴子魚"],
+              mustOrder: ["元祖明石燒高湯套餐 (20顆入)"]
+            },
+            {
+              id: "d11-3",
+              time: "15:00",
+              type: "attraction",
+              title: "淡路島夢舞台・安藤忠雄清水模建築與百段苑",
+              locationName: "淡路夢舞台 (Awaji Yumebutai)",
+              navQuery: "Awaji Yumebutai",
+              transitTime: "🚗 行經明石海峽大橋約 30 分鐘",
+              duration: "2.5 小時",
+              description: "建築大師安藤忠雄為撫平採石傷痕而設計的再生建築群，依山而建的一百個階梯狀花壇極富幾何張力。",
+              mustBuy: ["淡路島甜洋蔥湯包", "鳴門金時地瓜和菓子"]
+            }
+          ]
+        },
+        {
+          day: 12,
+          date: "2026-11-26 (週四)",
+          title: "穿越兵庫秘境前往日本海・城崎溫泉七大外湯與松葉蟹",
+          cityOrArea: "兵庫・城崎溫泉 (Kinosaki Onsen)",
+          weather: {
+            temp: "8°C ~ 14°C",
+            condition: "多雲偶陣雨 (日本海氣候)",
+            icon: "rainy",
+            humidity: "75%",
+            clothingTip: "日本海沿岸水氣豐富偏冷，務必攜帶防雨外套與保暖羊毛衣物。",
+            geographyNote: "大谿川貫穿溫泉街，兩岸垂柳石橋古色古香，冬初日本海松葉蟹解禁旺季。",
+            safetyHealthTip: "外湯巡禮穿木屐在濕滑石板路上行走時請放慢腳步，注意防滑。"
+          },
+          items: [
+            {
+              id: "d12-1",
+              time: "11:30",
+              type: "attraction",
+              title: "城崎溫泉柳樹大谿川散策 & 浴衣外湯巡禮",
+              locationName: "城崎溫泉 一之湯 (Ichino-yu)",
+              navQuery: "Kinosaki Onsen",
+              transitTime: "🚗 自駕穿過丹波山脈約 130 分鐘",
+              duration: "3 小時",
+              description: "換上旅館浴衣與木屐，踩著木屐聲漫步在柳樹依依的石橋運河邊，手持外湯通票體驗七大名湯。",
+              mustBuy: ["城崎麥仙貝", "城崎限定麥秸工藝品"],
+              storyAndTips: {
+                story: "文學家志賀直哉曾在此養病並創作名著《在城崎》，使城崎溫泉成為文豪鍾愛的溫泉勝地。"
+              }
+            },
+            {
+              id: "d12-2",
+              time: "18:00",
+              type: "food",
+              title: "津居山港直送・冬之味覺 極品松葉蟹會席",
+              locationName: "城崎溫泉 蟹料理 西村屋",
+              navQuery: "Nishimuraya Kinosaki Onsen",
+              duration: "2 小時",
+              description: "享用剛從津居山港捕撈上岸的頂級松葉蟹（津居山蟹），包含生蟹刺身、炭火烤蟹腳與濃郁蟹膏甲羅燒。",
+              mustEat: ["活松葉蟹刺身", "備長炭烤甜美蟹腳", "蟹黃甲羅燒", "松葉蟹雜炊炊飯"],
+              mustOrder: ["冬旬特選活松葉蟹全席料理"],
+              bookingCode: "CRAB-KINO-7788",
+              storyAndTips: {
+                culturalTip: "日本海松葉蟹腳肉質纖細甘甜，烤蟹腳時不需加任何調味料，直接品嚐天然海鹽甘味最絕妙。"
+              }
+            }
+          ]
+        },
+        {
+          day: 13,
+          date: "2026-11-27 (週五)",
+          title: "海之京都水上聚落・伊根舟屋群與天橋立飛龍觀",
+          cityOrArea: "京都・伊根 / 宮津 (Ine / Miyazu)",
+          weather: {
+            temp: "9°C ~ 16°C",
+            condition: "晴時多雲，海風清涼",
+            icon: "sunny",
+            humidity: "68%",
+            clothingTip: "搭乘觀光船出海海風較大，建議穿著防風帽子與連帽防風厚外套。",
+            geographyNote: "伊根灣地形封閉平靜無風浪，天橋立沙洲全長 3.6 公里橫跨阿蘇海與宮津灣。",
+            safetyHealthTip: "搭船餵食海鷗時請拿穩蝦味先，注意海鷗與老鷹俯衝時之安全。"
+          },
+          items: [
+            {
+              id: "d13-1",
+              time: "09:30",
+              type: "attraction",
+              title: "伊根舟屋群・伊根灣遊覽船 & 海鷗餵食",
+              locationName: "伊根灣遊覽船 (Ine Bay Cruise)",
+              navQuery: "Ine Bay Sightseeing Boat",
+              transitTime: "🚗 自駕沿日本海景觀公路約 70 分鐘",
+              duration: "2.5 小時",
+              description: "230 棟緊鄰海面而建的一樓停泊船隻、二樓居住的木造舟屋聚落，搭乘遊船欣賞水上浮世繪絕景。",
+              mustEat: ["伊根舟屋日和 咖啡下午茶", "伊根滿開 赤米清酒"],
+              mustBuy: ["向井酒造 伊根滿開 (古代赤米清酒)", "舟屋手繪陶器明信片"],
+              storyAndTips: {
+                story: "伊根灣潮差極小且三面環山，漁民百年來發展出人與海洋共生的獨特舟屋建築型態。"
+              }
+            },
+            {
+              id: "d13-2",
+              time: "13:00",
+              type: "food",
+              title: "宮津 丹後在地海鮮・富田屋 (Tonadaya)",
+              locationName: "富田屋 (Tonadaya)",
+              navQuery: "Tonadaya Miyazu",
+              duration: "1.5 小時",
+              description: "緊鄰宮津車站的昭和平價海鮮名舖，品嚐剛出海的新鮮鰤魚（油甘魚）、比目魚與現炸酥脆海鮮定食。",
+              mustEat: ["特上海鮮生魚片定食", "現炸酥脆竹莢魚", "鯛魚荒焚燉魚頭"],
+              mustOrder: ["季節限定 丹後鰤魚涮涮鍋定食"]
+            },
+            {
+              id: "d13-3",
+              time: "15:00",
+              type: "attraction",
+              title: "日本三景 天橋立・飛龍觀空中纜車 & 胯下窺景",
+              locationName: "天橋立 飛龍觀 (Amanohashidate Viewland)",
+              navQuery: "Amanohashidate Viewland",
+              duration: "2.5 小時",
+              description: "搭乘單人吊椅纜車上山，從胯下彎腰倒看天橋立沙洲綠松林，如一條巨龍在天空中騰空翱翔。",
+              mustBuy: ["天橋立智惠之餅", "丹後松葉黑豆仙貝"],
+              storyAndTips: {
+                story: "相傳天橋立是神道教伊奘諾尊為通往天界建造的天梯倒落人間而成，名列日本三大絕景之一。"
+              }
+            }
+          ]
+        },
+        {
+          day: 14,
+          date: "2026-11-28 (週六)",
+          title: "近江琵琶湖白鬚神社水上鳥居・圓滿歸賦",
+          cityOrArea: "滋賀・琵琶湖 往 關西機場",
+          weather: {
+            temp: "10°C ~ 17°C",
+            condition: "晴朗秋爽",
+            icon: "sunny",
+            humidity: "56%",
+            clothingTip: "輕便洋蔥式搭機舒適服裝，隨身準備護照、退稅單據與國際駕照。",
+            geographyNote: "琵琶湖為日本最大淡水湖，白鬚神社水上鳥居立於湖畔浪花中。",
+            safetyHealthTip: "最後一天自駕前往機場請預留充足還車、加油與安檢時間（建議起飛前 3 小時抵達機場）。"
+          },
+          items: [
+            {
+              id: "d14-1",
+              time: "09:30",
+              type: "attraction",
+              title: "琵琶湖 白鬚神社・湖中朱紅水上大鳥居",
+              locationName: "白鬚神社 (Shirahige Shrine)",
+              navQuery: "Shirahige Shrine Shiga",
+              transitTime: "🚗 自駕南下約 80 分鐘",
+              duration: "1.5 小時",
+              description: "近江最古老神社，矗立在煙波浩渺琵琶湖水中的朱紅色大鳥居，被譽為『近江之嚴島』。",
+              mustBuy: ["白鬚神社延命長壽御守", "近江八幡丁字麩"],
+              storyAndTips: {
+                photoSpot: "站在神社本殿前觀景台遠眺湖面鳥居與遠方沖島，水天一色極具神聖之美。"
+              }
+            },
+            {
+              id: "d14-2",
+              time: "12:00",
+              type: "food",
+              title: "大津 近江牛專門店 逢坂山 かねよ (Kaneyo)",
+              locationName: "逢坂山 かねよ",
+              navQuery: "Kaneyo Otsu Shiga",
+              duration: "1.5 小時",
+              description: "創業於明治時代的炭火烤鰻與近江牛名店，以整大塊鬆軟厚煎玉子燒覆蓋在蒲燒鰻魚飯上的『極上金玉丼』聞名。",
+              mustEat: ["元祖金玉鰻魚玉子燒丼", "炭火炙燒近江牛串", "鰻魚肝高湯清湯"],
+              mustOrder: ["逢坂山特選鰻魚金玉御膳"]
+            },
+            {
+              id: "d14-3",
+              time: "15:00",
+              type: "transport",
+              title: "關西國際機場加油還車 ✈️ 滿載回憶返台",
+              locationName: "Times Car Rental 關西空港店",
+              navQuery: "Times Car Rental Kansai Airport",
+              transitTime: "🚗 高速公路自駕 70 分鐘 + 🛫 飛行返台 3 小時",
+              duration: "2 小時",
+              description: "於機場旁加油站加滿油完成驗車歸還，至關西機場免稅店進行最後伴手禮採買，搭機平安返回台灣。",
+              bookingCode: "FLIGHT-TPE-KIX",
+              storyAndTips: {
+                selfDriveTip: "還車前請於臨空城或機場周邊加油站加滿油（Regular 汽油），並保留加油發票供車行人員查驗。"
               }
             }
           ]
@@ -557,32 +1112,143 @@
       const [selectedStoryItem, setSelectedStoryItem] = useState(null);
       const [showClimateModal, setShowClimateModal] = useState(false);
       const [showPlannerModal, setShowPlannerModal] = useState(false);
+      const [showProfileModal, setShowProfileModal] = useState(false);
+      const [showAddItemModal, setShowAddItemModal] = useState(false);
       const [toastMessage, setToastMessage] = useState("");
       const [isGenerating, setIsGenerating] = useState(false);
       const [currentUser, setCurrentUser] = useState(null);
       const [cloudStatus, setCloudStatus] = useState("本機已保存");
+
+      // 旅人自訂設定：暱稱、出發日、主題色系、打卡清單與私人備忘
+      const [profile, setProfile] = useState(() => {
+        return tripData.profile || {
+          ownerName: "專屬旅人",
+          departureDate: "2026-11-15",
+          theme: "vintage" // vintage, matcha, ocean, sakura
+        };
+      });
+
+      const [checkedItemIds, setCheckedItemIds] = useState(() => {
+        return new Set(tripData.checkedItemIds || []);
+      });
+
+      const [userMemos, setUserMemos] = useState(() => {
+        return tripData.userMemos || {};
+      });
+
+      const [newItemForm, setNewItemForm] = useState({
+        time: "10:00",
+        type: "attraction",
+        title: "",
+        locationName: "",
+        description: "",
+        mustEat: "",
+        mustBuy: "",
+        bookingCode: ""
+      });
+
       const [apiKeyInput, setApiKeyInput] = useState(() => {
         return localStorage.getItem("GEMINI_KEY") || DEFAULT_GEMINI_API_KEY;
       });
       const [showKeyInput, setShowKeyInput] = useState(false);
 
-      // 自動將行程持久化至網址與雲端儲存
-      const saveTripPersistence = async (newTrip, user = currentUser) => {
+      // 手繪手帳 4 種高辨識度特色主題配色配置 (色彩鮮明、風格迥異)
+      const THEMES = {
+        vintage: {
+          id: "vintage",
+          name: "溫潤牛皮紙 📜",
+          swatch: "bg-[#D8B486] border-[#8C6D3F]",
+          bg: "bg-[#E6DAC3]",
+          cardBg: "bg-[#FAF3E3]",
+          accentBorder: "border-[#CBB996]",
+          primaryBtn: "bg-[#5C3D21] text-white",
+          tagBg: "bg-[#EED9B3] text-[#5A3816] border-[#D4B580]",
+          headerGradient: "from-amber-800 to-yellow-900",
+          bannerBg: "bg-gradient-to-br from-[#F5E7D0] via-[#FAF2DF] to-[#EFE1C5]",
+          activeTab: "bg-[#5C3D21] text-[#FDF9F3] border-[#5C3D21]",
+          tapeColor: "bg-[#FDE68A]"
+        },
+        matcha: {
+          id: "matcha",
+          name: "京都若竹綠 🍵",
+          swatch: "bg-[#4ADE80] border-[#15803D]",
+          bg: "bg-[#BDD8BC]",
+          cardBg: "bg-[#EDF6EE]",
+          accentBorder: "border-[#8EBE8C]",
+          primaryBtn: "bg-[#1B4D20] text-white",
+          tagBg: "bg-[#C6E6C5] text-[#144819] border-[#86BA84]",
+          headerGradient: "from-emerald-700 to-teal-800",
+          bannerBg: "bg-gradient-to-br from-[#D2E7D1] via-[#E7F3E6] to-[#DCECDC]",
+          activeTab: "bg-[#1B4D20] text-[#F0FDF4] border-[#1B4D20]",
+          tapeColor: "bg-[#A7F3D0]"
+        },
+        ocean: {
+          id: "ocean",
+          name: "地中海蔚藍 🌊",
+          swatch: "bg-[#60A5FA] border-[#1D4ED8]",
+          bg: "bg-[#B5D6F5]",
+          cardBg: "bg-[#EEF6FD]",
+          accentBorder: "border-[#86BBE9]",
+          primaryBtn: "bg-[#17437C] text-white",
+          tagBg: "bg-[#BFDBFE] text-[#1E3A8A] border-[#7DB3F0]",
+          headerGradient: "from-blue-600 to-indigo-700",
+          bannerBg: "bg-gradient-to-br from-[#D2E7FA] via-[#E8F3FD] to-[#D8EAFC]",
+          activeTab: "bg-[#17437C] text-[#EFF6FF] border-[#17437C]",
+          tapeColor: "bg-[#BAE6FD]"
+        },
+        sakura: {
+          id: "sakura",
+          name: "暮櫻胭脂粉 🌸",
+          swatch: "bg-[#FB7185] border-[#BE123C]",
+          bg: "bg-[#F7B7C7]",
+          cardBg: "bg-[#FFF0F4]",
+          accentBorder: "border-[#F48DA5]",
+          primaryBtn: "bg-[#881337] text-white",
+          tagBg: "bg-[#FCE7F3] text-[#831843] border-[#F49AB2]",
+          headerGradient: "from-rose-600 to-pink-700",
+          bannerBg: "bg-gradient-to-br from-[#FED7E2] via-[#FFF1F5] to-[#FCD0DC]",
+          activeTab: "bg-[#881337] text-[#FFF1F2] border-[#881337]",
+          tapeColor: "bg-[#FECDD3]"
+        }
+      };
+
+      const currentTheme = THEMES[profile.theme] || THEMES.vintage;
+
+      // 計算出發倒數天數
+      const countdownDays = useMemo(() => {
+        if (!profile.departureDate) return null;
         try {
-          // 1. 同步更新至網址錨點，重整網頁或將網址分享給旅伴都能即時開啟相同行程
-          const encoded = btoa(encodeURIComponent(JSON.stringify(newTrip)));
+          const target = new Date(profile.departureDate);
+          const now = new Date();
+          const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+          return diff;
+        } catch (e) {
+          return null;
+        }
+      }, [profile.departureDate]);
+
+      // 自動將行程持久化至網址與雲端儲存
+      const saveTripPersistence = async (newTrip, newProfile = profile, newChecked = checkedItemIds, newMemos = userMemos, user = currentUser) => {
+        const payload = {
+          ...newTrip,
+          profile: newProfile,
+          checkedItemIds: Array.from(newChecked),
+          userMemos: newMemos
+        };
+
+        try {
+          const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
           window.history.replaceState(null, "", `#${encoded}`);
         } catch (e) {
           console.warn("URL persistence error", e);
         }
 
-        // 2. 若支援雲端同步，則自動備份至專屬雲端空間
         if (window.__cloudStore && user) {
           const { db, appId, doc, setDoc } = window.__cloudStore;
           try {
             const tripDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trips', 'activeTrip');
             await setDoc(tripDocRef, {
-              trip: newTrip,
+              trip: payload,
               updatedAt: Date.now()
             });
             setCloudStatus("雲端已同步");
@@ -590,6 +1256,82 @@
             console.warn("Cloud persistence err", err);
           }
         }
+      };
+
+      // 切換踩點打卡狀態
+      const handleToggleCheckItem = (itemId) => {
+        const updated = new Set(checkedItemIds);
+        if (updated.has(itemId)) {
+          updated.delete(itemId);
+          triggerToast("⚪ 已取消踩點標記");
+        } else {
+          updated.add(itemId);
+          triggerToast("💮 成功蓋上踩點印章！太棒了！");
+        }
+        setCheckedItemIds(updated);
+        saveTripPersistence(tripData, profile, updated, userMemos);
+      };
+
+      // 儲存卡片私人備忘
+      const handleSaveMemo = (itemId, memoText) => {
+        const updated = { ...userMemos, [itemId]: memoText };
+        setUserMemos(updated);
+        saveTripPersistence(tripData, profile, checkedItemIds, updated);
+        triggerToast("✍️ 專屬筆記已隨手記錄保存！");
+      };
+
+      // 手動新增卡片
+      const handleAddCustomItem = (e) => {
+        e.preventDefault();
+        if (!newItemForm.title.trim()) {
+          triggerToast("請輸入項目名稱！");
+          return;
+        }
+
+        const newItem = {
+          id: `custom-${Date.now()}`,
+          time: newItemForm.time || "10:00",
+          type: newItemForm.type || "attraction",
+          title: newItemForm.title,
+          locationName: newItemForm.locationName || newItemForm.title,
+          navQuery: newItemForm.locationName || newItemForm.title,
+          duration: "約 1.5 小時",
+          description: newItemForm.description || "旅人專屬新增的私房行程！",
+          mustEat: newItemForm.mustEat ? newItemForm.mustEat.split(',').map(s => s.trim()) : undefined,
+          mustBuy: newItemForm.mustBuy ? newItemForm.mustBuy.split(',').map(s => s.trim()) : undefined,
+          bookingCode: newItemForm.bookingCode || undefined,
+          storyAndTips: {
+            story: "此處為旅人親自加入的私房秘密據點，期待在旅程中發現更多驚喜！"
+          }
+        };
+
+        const updatedDays = [...tripData.days];
+        const dayToUpdate = { ...updatedDays[activeDayIndex] };
+        dayToUpdate.items = [...(dayToUpdate.items || []), newItem];
+        updatedDays[activeDayIndex] = dayToUpdate;
+
+        const updatedTrip = { ...tripData, days: updatedDays };
+        setTripData(updatedTrip);
+        saveTripPersistence(updatedTrip, profile, checkedItemIds, userMemos);
+        setShowAddItemModal(false);
+        setNewItemForm({
+          time: "10:00",
+          type: "attraction",
+          title: "",
+          locationName: "",
+          description: "",
+          mustEat: "",
+          mustBuy: "",
+          bookingCode: ""
+        });
+        triggerToast(`🎉 已將【${newItem.title}】加入今日手帳中！`);
+      };
+
+      // 複製專屬手帳分享連結 (安全使用 document.execCommand)
+      const handleShareTrip = () => {
+        const url = window.location.href;
+        copyTextToClipboard(url);
+        triggerToast("💌 已複製專屬手帳專用分享網址，快發給旅伴吧！");
       };
 
       // 監聽雲端儲存與使用者授權狀態
@@ -609,6 +1351,9 @@
               const data = snapshot.data();
               if (data && data.trip && Array.isArray(data.trip.days)) {
                 setTripData(data.trip);
+                if (data.trip.profile) setProfile(data.trip.profile);
+                if (data.trip.checkedItemIds) setCheckedItemIds(new Set(data.trip.checkedItemIds));
+                if (data.trip.userMemos) setUserMemos(data.trip.userMemos);
                 setCloudStatus("雲端已同步");
               }
             }
@@ -625,11 +1370,12 @@
       }, []);
 
       const [plannerForm, setPlannerForm] = useState({
-        destination: "瑞士少女峰與策馬特",
-        daysCount: 6,
-        companion: "情侶 / 夫妻蜜月",
-        budget: "奢華高享受 (約 NT$ 100,000 / 人)",
-        stylePreference: "絕美自然風光、景觀鐵道自駕、私房起司鍋與米其林景觀餐廳"
+        destination: "日本關西與近畿大縱走",
+        departureCity: "台灣桃園 (TPE)",
+        daysCount: 14,
+        companion: "情侶 / 夫妻 / 深度慢活者",
+        budget: "精緻中高預算 (約 NT$ 85,000 / 人)",
+        stylePreference: "京都古寺、海之京都伊根舟屋、城崎溫泉松葉蟹、神戶牛與琵琶湖湖中鳥居"
       });
 
       const activeDay = tripData.days[activeDayIndex] || tripData.days[0];
@@ -656,16 +1402,7 @@
 
       const handleCopyCode = (code, e) => {
         e.stopPropagation();
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(code);
-        } else {
-          const textarea = document.createElement('textarea');
-          textarea.value = code;
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textarea);
-        }
+        copyTextToClipboard(code);
         triggerToast(`📋 已成功複製預約代號：${code}`);
       };
 
@@ -687,7 +1424,7 @@
         }
       };
 
-      // 100% 純 Gemini API 行程規劃生成 (修正模型端點與 JSON 雜訊解析)
+      // 100% 純 Gemini API 行程規劃生成
       const handleGenerateAiTrip = async () => {
         const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
         
@@ -700,18 +1437,28 @@
         setIsGenerating(true);
         localStorage.setItem("GEMINI_KEY", apiKey);
 
+        const targetDays = Math.min(Math.max(Number(plannerForm.daysCount) || 1, 1), 30);
+
         const systemPrompt = `你是一位世界頂級的「旅行規劃專家」兼具深厚文化底蘊的「私房導遊」。
 請根據使用者的需求，以繁體中文 (台灣) 規劃一份極致精緻、手機閱讀友善的手繪風旅行手帳行程。
-你必須嚴格輸出合法的純 JSON 格式，不要包含任何額外說明文字。
+你必須嚴格輸出合法的純 JSON 格式，不要包含任何額外說明文字或 markdown 代碼標籤。
+
+【最核心天數與細節規則 - 必須 100% 嚴格執行】：
+1. 使用者指定的旅行天數為【${targetDays} 天】。
+2. 回傳的 JSON 根物件中的 "daysCount" 必須等於 ${targetDays}。
+3. "days" 陣列中必須『精確包含 ${targetDays} 個天數物件』，從 day: 1, day: 2 一路完整寫到 day: ${targetDays}！
+4. 絕對不可在中斷處省略或寫「以此類推」！無論天數是幾天，每一天都必須有豐富真實的行程內容。
+5. 每一天請安排 2~4 個高水準項目 (attraction, food, transport, hotel)，包含景點、名店必吃/必點/必買、交通/自駕時間、預約代號與導遊私房故事。
 
 JSON 結構規範：
 {
   "destination": "目的地全名與主題標題",
   "subtitle": "副標題",
-  "daysCount": 數字,
+  "daysCount": ${targetDays},
   "companion": "成員組成",
   "budget": "預算等級",
   "season": "推薦旅行季節與氣候特徵",
+  "flightEstimate": "從出發地前往目的地的預估航行/飛行時間及航線建議",
   "geographyOverview": {
     "topography": "詳細地形特徵",
     "climate": "氣候特點",
@@ -741,14 +1488,15 @@ JSON 結構規範：
           "title": "項目名稱",
           "locationName": "真實地點名稱",
           "navQuery": "精確導航搜尋關鍵字 (英文或當地語言便於地圖導航)",
+          "transitTime": "預估航行/交通時間 (如：🛫 直飛飛行約 3 小時 20 分鐘，或自駕約 40 分鐘)",
           "duration": "預估逗留時間",
-          "description": "精鍊介紹 (約50字)",
+          "description": "精鍊介紹 (約40字)",
           "mustEat": ["必吃美食1", "必吃美食2"],
           "mustOrder": ["必點菜單1", "必點菜單2"],
           "mustBuy": ["必買伴手禮1", "必買伴手禮2"],
           "bookingCode": "預約代號或通票 (選填)",
           "storyAndTips": {
-            "story": "導遊私房景點故事與歷史人文典故 (約80字)",
+            "story": "導遊私房景點故事與歷史人文典故 (約60字)",
             "culturalTip": "在地文化習俗、禮儀或避坑小撇步",
             "photoSpot": "攝影愛好者絕景拍攝角度",
             "selfDriveTip": "自駕停車或路線指引"
@@ -759,24 +1507,28 @@ JSON 結構規範：
   ]
 }`;
 
-        const userQuery = `請為我規劃【${plannerForm.destination}】的 ${plannerForm.daysCount} 天精彩旅程。
-同行成員：${plannerForm.companion}
-預算期望：${plannerForm.budget}
-風格與偏好：${plannerForm.stylePreference}
-請確保每一天都有豐富的景點(attraction)、美食(food)、交通/住宿安排，內容請保持精練以確保完整輸出合法 JSON。`;
+        const userQuery = `【任務需求】：請為我規劃剛好【${targetDays} 天】的完整且高度詳細的旅行手帳！
+- 出發地：${plannerForm.departureCity || '台灣桃園'}
+- 目的地：${plannerForm.destination}
+- 旅行天數：嚴格要求剛好【${targetDays} 天】（days 陣列必須包含 ${targetDays} 筆資料，從第 1 天一路連續排列至第 ${targetDays} 天，不可中斷）
+- 同行成員：${plannerForm.companion}
+- 預算期望：${plannerForm.budget}
+- 風格與偏好：${plannerForm.stylePreference}
+
+請務必精準試算【預估航程時間 (flightEstimate)】與各站【交通/航程時間 (transitTime)】，並完整輸出從第 1 天到第 ${targetDays} 天的精彩詳細行程！`;
 
         const apiPayload = {
           contents: [{ parts: [{ text: userQuery }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { 
-            responseMimeType: "application/json"
+            responseMimeType: "application/json",
+            maxOutputTokens: 8192
           }
         };
 
-        // 依序嘗試標準端點 gemini-3-flash-preview 及備用端點 gemini-2.5-flash
         const modelEndpoints = [
-          "gemini-3-flash-preview",
-          "gemini-2.5-flash"
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite"
         ];
 
         let success = false;
@@ -814,7 +1566,6 @@ JSON 結構規範：
               const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
               if (textResponse) {
-                // 清洗可能的 markdown 代碼標記 (```json ... ```)
                 let cleaned = textResponse.trim();
                 if (cleaned.startsWith("```json")) {
                   cleaned = cleaned.replace(/^```json\s*/i, "").replace(/\s*```$/, "");
@@ -824,6 +1575,7 @@ JSON 結構規範：
 
                 resultJson = JSON.parse(cleaned);
                 if (resultJson && Array.isArray(resultJson.days) && resultJson.days.length > 0) {
+                  resultJson.daysCount = resultJson.days.length;
                   success = true;
                   break;
                 }
@@ -841,11 +1593,11 @@ JSON 結構規範：
 
         if (success && resultJson) {
           setTripData(resultJson);
-          saveTripPersistence(resultJson, currentUser);
+          saveTripPersistence(resultJson, profile, checkedItemIds, userMemos, currentUser);
           setActiveDayIndex(0);
           setActiveCategory('all');
           setShowPlannerModal(false);
-          triggerToast("✨ 行程已生成並已自動為您保存！");
+          triggerToast(`✨ 成功！已為您完整繪製 ${resultJson.days.length} 天的詳細專屬手帳行程！`);
         } else {
           triggerToast(`⚠️ AI 生成失敗：${lastErrorMessage}`);
         }
@@ -853,35 +1605,47 @@ JSON 結構規範：
 
       const handleResetDefaultTrip = () => {
         setTripData(DEFAULT_TRIP);
-        saveTripPersistence(DEFAULT_TRIP, currentUser);
+        saveTripPersistence(DEFAULT_TRIP, profile, checkedItemIds, userMemos, currentUser);
         setActiveDayIndex(0);
         setActiveCategory('all');
-        triggerToast("🔄 已還原為預設示範行程！");
+        triggerToast("🔄 已還原為 14 天關西與近畿深度示範行程！");
       };
 
       return (
-        <div className="min-h-screen bg-[#FAF7F2] text-[#2D3748] font-sans antialiased selection:bg-amber-200 selection:text-amber-900 pb-24">
+        <div className={`min-h-screen ${currentTheme.bg} text-[#2D3748] font-sans antialiased selection:bg-amber-200 selection:text-amber-900 pb-24 transition-colors duration-300`}>
           <div className="fixed inset-0 pointer-events-none opacity-40 bg-[radial-gradient(#E2D9C8_1px,transparent_1px)] [background-size:16px_16px] z-0" />
 
-          <div className="relative z-10 max-w-md mx-auto min-h-screen bg-[#FCFAF6] shadow-2xl border-x border-[#E9E2D5] flex flex-col">
+          <div className={`relative z-10 max-w-md mx-auto min-h-screen ${currentTheme.cardBg} shadow-2xl border-x ${currentTheme.accentBorder} flex flex-col`}>
             
             {/* 頂部 Header */}
-            <header className="sticky top-0 z-30 bg-[#FCFAF6]/95 backdrop-blur-md border-b border-[#EADFCB] px-4 pt-4 pb-3 shadow-xs">
+            <header className={`sticky top-0 z-30 ${currentTheme.cardBg}/95 backdrop-blur-md border-b ${currentTheme.accentBorder} px-4 pt-4 pb-3 shadow-xs`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-dashed border-amber-600 flex items-center justify-center text-amber-800 shadow-xs">
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    title="點擊自訂個人手帳主人"
+                    className="w-8 h-8 rounded-full bg-amber-100 border-2 border-dashed border-amber-600 flex items-center justify-center text-amber-800 shadow-xs hover:scale-105 active:scale-95 transition-transform"
+                  >
                     <SketchCompass className="w-4 h-4" />
-                  </div>
+                  </button>
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold tracking-wider text-amber-700 uppercase bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200/60">
-                        隨身手帳
-                      </span>
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 rounded-sm font-bold">
-                        ● {cloudStatus}
-                      </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => setShowProfileModal(true)}
+                        className="text-[10px] font-extrabold tracking-wider text-amber-800 uppercase bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-sm border border-amber-300/80 flex items-center gap-1"
+                      >
+                        <span>📖</span>
+                        <span>{profile.ownerName}的手帳</span>
+                        <span className="text-[9px] opacity-70">✎</span>
+                      </button>
+
+                      {countdownDays !== null && (
+                        <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded-sm font-black">
+                          {countdownDays > 0 ? `⏳ 倒數 ${countdownDays} 天` : (countdownDays === 0 ? "🎉 今日出發！" : `✈️ 出發第 ${Math.abs(countdownDays) + 1} 天`)}
+                        </span>
+                      )}
                     </div>
-                    <h1 className="text-base font-extrabold text-[#231F20] tracking-tight leading-snug line-clamp-1">
+                    <h1 className="text-base font-extrabold text-[#231F20] tracking-tight leading-snug line-clamp-1 mt-0.5">
                       {tripData.destination}
                     </h1>
                   </div>
@@ -889,15 +1653,22 @@ JSON 結構規範：
 
                 <div className="flex items-center gap-1.5">
                   <button
+                    onClick={handleShareTrip}
+                    title="分享這本手帳給朋友"
+                    className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full text-xs font-bold transition-all active:scale-90 border border-stone-300/80"
+                  >
+                    🔗
+                  </button>
+                  <button
                     onClick={handleResetDefaultTrip}
-                    title="重置為京都示範行程"
+                    title="重置為 14 天示範行程"
                     className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-full text-xs font-bold transition-all active:scale-90 border border-stone-300/80"
                   >
                     🔄
                   </button>
                   <button
                     onClick={() => setShowPlannerModal(true)}
-                    className="group flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-all"
+                    className={`group flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r ${currentTheme.headerGradient} text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-all`}
                   >
                     <SketchSparkles className="w-3.5 h-3.5 animate-spin text-amber-200" style={{ animationDuration: '8s' }} />
                     <span>AI 客製</span>
@@ -921,7 +1692,16 @@ JSON 結構規範：
                 </button>
               </div>
 
-              {/* 天數滑動分頁籤 */}
+              {/* 預估航行與飛行時間標籤列 */}
+              {tripData.flightEstimate && (
+                <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-bold text-sky-950 bg-sky-50/90 border border-sky-200/90 rounded-xl px-3 py-1.5 shadow-2xs">
+                  <SketchPlane className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                  <span className="text-sky-800 shrink-0 font-extrabold">預估航程：</span>
+                  <span className="truncate text-sky-900 font-medium">{tripData.flightEstimate}</span>
+                </div>
+              )}
+
+              {/* 14 天完整滑動分頁籤 */}
               <div className="flex space-x-2 overflow-x-auto no-scrollbar pt-3 pb-1 -mx-4 px-4 scroll-smooth">
                 {tripData.days.map((d, index) => {
                   const isSelected = index === activeDayIndex;
@@ -932,19 +1712,21 @@ JSON 結構規範：
                         setActiveDayIndex(index);
                         setActiveCategory('all');
                       }}
-                      className={`relative shrink-0 px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex flex-col items-center min-w-[62px] border ${
+                      className={`relative shrink-0 px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex flex-col items-center min-w-[66px] border ${
                         isSelected
-                          ? 'bg-[#2D3748] text-[#FAF7F2] border-[#2D3748] shadow-md -translate-y-0.5'
-                          : 'bg-white/80 text-stone-600 border-[#E2D7C5] hover:bg-amber-50/50'
+                          ? `${currentTheme.activeTab} shadow-md -translate-y-0.5`
+                          : 'bg-white/85 text-stone-600 border-stone-300/70 hover:bg-white'
                       }`}
                     >
                       {isSelected && (
                         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2">
-                          <TapeEffect color="bg-amber-300" className="w-6 h-2 -rotate-2" />
+                          <TapeEffect color={currentTheme.tapeColor} className="w-6 h-2 -rotate-2" />
                         </div>
                       )}
                       <span className="text-[10px] opacity-80 uppercase">Day {d.day}</span>
-                      <span className="text-xs font-black">{d.cityOrArea?.split('・')[1] || d.cityOrArea || `第 ${d.day} 天`}</span>
+                      <span className="text-xs font-black truncate max-w-[62px]">
+                        {d.cityOrArea?.split('・')[1] || d.cityOrArea?.split(' ')[0] || `第 ${d.day} 天`}
+                      </span>
                     </button>
                   );
                 })}
@@ -954,9 +1736,9 @@ JSON 結構規範：
             {/* 核心內容區 */}
             <main className="flex-1 px-4 pt-3 space-y-4">
               {/* 每日即時天氣與穿著橫幅卡片 */}
-              <div className="relative bg-gradient-to-br from-amber-50/90 via-orange-50/70 to-stone-50 border-2 border-[#E5DAC6] rounded-2xl p-3.5 shadow-sm overflow-hidden">
+              <div className={`relative ${currentTheme.bannerBg} border-2 ${currentTheme.accentBorder} rounded-2xl p-3.5 shadow-sm overflow-hidden`}>
                 <div className="absolute -top-2 -right-3 rotate-12">
-                  <TapeEffect color="bg-rose-200/90" className="w-16 h-3" />
+                  <TapeEffect color={currentTheme.tapeColor} className="w-16 h-3" />
                 </div>
 
                 <div className="flex items-start justify-between">
@@ -981,6 +1763,7 @@ JSON 結構規範：
                   </div>
                 </div>
 
+                {/* 今日穿搭指南與濕度提示 */}
                 <div className="mt-3 pt-2.5 border-t border-dashed border-amber-200/90 grid grid-cols-1 gap-1.5 text-xs">
                   <div className="flex items-start gap-1.5 text-stone-700 bg-white/70 p-2 rounded-xl border border-amber-100">
                     <span className="text-amber-700 shrink-0 text-sm">🧥</span>
@@ -996,32 +1779,43 @@ JSON 結構規範：
                 </div>
               </div>
 
-              {/* 分類按鈕 */}
+              {/* 分類按鈕與手動新增行程按鈕 */}
               <div className="flex items-center justify-between pb-0.5">
                 <span className="text-xs font-bold text-stone-500 flex items-center gap-1">
                   <SketchPin className="w-3.5 h-3.5 text-amber-700" />
-                  <span>當日行程清單 ({filteredItems.length})</span>
+                  <span>當日行程 ({filteredItems.length})</span>
                 </span>
 
-                <div className="flex space-x-1 bg-stone-200/60 p-0.5 rounded-xl text-[11px] font-bold">
-                  {[
-                    { id: 'all', label: '全部' },
-                    { id: 'attraction', label: '景點' },
-                    { id: 'food', label: '美食' },
-                    { id: 'transport', label: '交通/宿' }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveCategory(tab.id)}
-                      className={`px-2.5 py-1 rounded-lg transition-all ${
-                        activeCategory === tab.id
-                          ? 'bg-white text-stone-900 shadow-2xs'
-                          : 'text-stone-500 hover:text-stone-800'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex space-x-0.5 bg-stone-200/60 p-0.5 rounded-xl text-[11px] font-bold">
+                    {[
+                      { id: 'all', label: '全部' },
+                      { id: 'attraction', label: '景點' },
+                      { id: 'food', label: '美食' },
+                      { id: 'transport', label: '交通/宿' }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveCategory(tab.id)}
+                        className={`px-2 py-1 rounded-lg transition-all ${
+                          activeCategory === tab.id
+                            ? 'bg-white text-stone-900 shadow-2xs'
+                            : 'text-stone-500 hover:text-stone-800'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setShowAddItemModal(true)}
+                    title="在今日手動加入專屬私房景點"
+                    className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs active:scale-90 flex items-center gap-0.5"
+                  >
+                    <span>＋</span>
+                    <span className="text-[10px] hidden sm:inline">加行程</span>
+                  </button>
                 </div>
               </div>
 
@@ -1030,13 +1824,17 @@ JSON 結構規範：
                 {filteredItems.length === 0 ? (
                   <div className="text-center py-10 bg-white/60 rounded-2xl border-2 border-dashed border-stone-200 p-6">
                     <div className="text-3xl mb-2">🌿</div>
-                    <p className="text-xs text-stone-500 font-medium">該分類下目前無行程，請點選「全部」查看完整安排。</p>
+                    <p className="text-xs text-stone-500 font-medium">該分類下目前無行程，請點選「全部」或右上角「＋」手動加入專屬行程。</p>
                   </div>
                 ) : (
                   filteredItems.map((item, idx) => (
                     <ItineraryCard
                       key={item.id || idx}
                       item={item}
+                      isChecked={checkedItemIds.has(item.id)}
+                      onToggleCheck={() => handleToggleCheckItem(item.id)}
+                      memo={userMemos[item.id] || ""}
+                      onSaveMemo={(text) => handleSaveMemo(item.id, text)}
                       onNavigate={() => handleNavigate(item)}
                       onOpenStory={() => setSelectedStoryItem(item)}
                       onCopyCode={(code, e) => handleCopyCode(code, e)}
@@ -1256,7 +2054,7 @@ JSON 結構規範：
             </div>
           )}
 
-          {/* 彈出視窗 3：AI 智能行程客製 */}
+          {/* 彈出視窗 3：AI 智能行程客製 Modal */}
           {showPlannerModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
               <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
@@ -1283,7 +2081,7 @@ JSON 結構規範：
                   </button>
                 </div>
 
-                {/* Gemini API Key 設定區 (純 AI 模式) */}
+                {/* Gemini API Key 設定區 */}
                 <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-amber-950 flex items-center gap-1">
@@ -1322,31 +2120,47 @@ JSON 結構規範：
                 </div>
 
                 <div className="space-y-3 text-xs">
-                  <div>
-                    <label className="font-bold text-stone-700 block mb-1">
-                      📍 心儀目的地
-                    </label>
-                    <input
-                      type="text"
-                      value={plannerForm.destination}
-                      onChange={(e) => setPlannerForm({ ...plannerForm, destination: e.target.value })}
-                      placeholder="例如：瑞士少女峰、冰島環島、泰國清邁..."
-                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        📍 心儀目的地 *
+                      </label>
+                      <input
+                        type="text"
+                        value={plannerForm.destination}
+                        onChange={(e) => setPlannerForm({ ...plannerForm, destination: e.target.value })}
+                        placeholder="例如：瑞士、冰島、日本關西..."
+                        className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        🛫 出發地 (評估航程)
+                      </label>
+                      <input
+                        type="text"
+                        value={plannerForm.departureCity}
+                        onChange={(e) => setPlannerForm({ ...plannerForm, departureCity: e.target.value })}
+                        placeholder="例如：台灣桃園 (TPE)、高雄..."
+                        className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-stone-700 block mb-1">
-                        📅 旅行天數
+                        📅 旅行天數 (最多 30 天)
                       </label>
                       <select
                         value={plannerForm.daysCount}
                         onChange={(e) => setPlannerForm({ ...plannerForm, daysCount: Number(e.target.value) })}
                         className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                       >
-                        {[1, 2, 3, 4, 5, 6, 7].map(n => (
-                          <option key={n} value={n}>{n} 天</option>
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map(n => (
+                          <option key={n} value={n}>
+                            {n} 天 {n === 14 ? '★ (推薦深度漫遊)' : n <= 3 ? '(極速快閃)' : n <= 7 ? '(經典行程)' : n <= 14 ? '(深度慢活)' : '(極致長途漫遊)'}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1377,9 +2191,9 @@ JSON 結構規範：
                       onChange={(e) => setPlannerForm({ ...plannerForm, budget: e.target.value })}
                       className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                     >
-                      <option value="親民小資高CP值 (約 NT$ 25,000 / 人)">經濟小資高CP值</option>
-                      <option value="精緻舒適中高預算 (約 NT$ 45,000 / 人)">精緻舒適無負擔</option>
-                      <option value="頂級奢華享受 (約 NT$ 80,000+ / 人)">頂級奢華美饌住宿</option>
+                      <option value="親民小資高CP值 (約 NT$ 35,000 / 人)">經濟小資高CP值</option>
+                      <option value="精緻舒適中高預算 (約 NT$ 85,000 / 人)">精緻舒適無負擔</option>
+                      <option value="頂級奢華享受 (約 NT$ 150,000+ / 人)">頂級奢華美饌住宿</option>
                     </select>
                   </div>
 
@@ -1391,7 +2205,7 @@ JSON 結構規範：
                       rows={2}
                       value={plannerForm.stylePreference}
                       onChange={(e) => setPlannerForm({ ...plannerForm, stylePreference: e.target.value })}
-                      placeholder="例如：喜歡米其林私房料理、不要太趕..."
+                      placeholder="例如：喜歡米其林私房料理、伊根舟屋、城崎溫泉松葉蟹、不要太趕..."
                       className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                     />
                   </div>
@@ -1410,7 +2224,7 @@ JSON 結構規範：
                     {isGenerating ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Gemini AI 正深度繪製手帳中，請稍候...</span>
+                        <span>Gemini AI 正深度繪製 14 天手帳中，請稍候...</span>
                       </>
                     ) : (
                       <>
@@ -1420,6 +2234,237 @@ JSON 結構規範：
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈出視窗 4：旅人專屬手帳客製設定 Modal */}
+          {showProfileModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-800">
+                      <span className="text-base">🎨</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest">
+                        手帳專屬個人化
+                      </span>
+                      <h3 className="text-base font-extrabold text-stone-900">
+                        打造您的專屬旅遊手帳
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      🏷️ 手帳主人專屬稱呼 / 暱稱
+                    </label>
+                    <input
+                      type="text"
+                      value={profile.ownerName}
+                      onChange={(e) => setProfile({ ...profile, ownerName: e.target.value })}
+                      placeholder="例如：Mia & Leo、艾蜜莉的慢活手帳..."
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      📅 預定出發日期 (啟用倒數計時)
+                    </label>
+                    <input
+                      type="date"
+                      value={profile.departureDate}
+                      onChange={(e) => setProfile({ ...profile, departureDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1.5">
+                      🎨 手帳色系主題風格
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.values(THEMES).map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setProfile({ ...profile, theme: t.id })}
+                          className={`p-2.5 rounded-xl border-2 text-left flex items-center justify-between transition-all ${
+                            profile.theme === t.id
+                              ? 'border-stone-800 bg-white shadow-md ring-2 ring-stone-400/40'
+                              : 'border-stone-200 bg-white/70 hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`w-3.5 h-3.5 rounded-full border shadow-2xs shrink-0 ${t.swatch}`}></span>
+                            <span className="font-extrabold text-stone-800 text-[11px]">{t.name}</span>
+                          </div>
+                          {profile.theme === t.id && <span className="text-stone-900 font-black text-xs">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex gap-2">
+                  <button
+                    onClick={() => {
+                      saveTripPersistence(tripData, profile, checkedItemIds, userMemos, currentUser);
+                      setShowProfileModal(false);
+                      triggerToast("✨ 專屬個人風格與設定已儲存！");
+                    }}
+                    className="w-full py-2.5 bg-stone-900 text-white font-extrabold text-xs rounded-2xl shadow-md"
+                  >
+                    儲存專屬手帳風格
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈出視窗 5：手動自訂新增行程項目 Modal */}
+          {showAddItemModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-800">
+                      <span className="text-base">➕</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-orange-800 uppercase tracking-widest">
+                        手動新增行程
+                      </span>
+                      <h3 className="text-base font-extrabold text-stone-900">
+                        加入 Day {activeDay.day} 的私房景點
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAddItemModal(false)}
+                    className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddCustomItem} className="space-y-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        ⏰ 預計時間
+                      </label>
+                      <input
+                        type="time"
+                        value={newItemForm.time}
+                        onChange={(e) => setNewItemForm({ ...newItemForm, time: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        📌 項目類型
+                      </label>
+                      <select
+                        value={newItemForm.type}
+                        onChange={(e) => setNewItemForm({ ...newItemForm, type: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      >
+                        <option value="attraction">景點名勝</option>
+                        <option value="food">私房美饌</option>
+                        <option value="transport">自駕/交通</option>
+                        <option value="hotel">特色下榻</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      🏷️ 項目標題 *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newItemForm.title}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, title: e.target.value })}
+                      placeholder="例如：嵐山秘境咖啡館、祇園手作雜貨..."
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      📍 地點名稱或地址 (導航使用)
+                    </label>
+                    <input
+                      type="text"
+                      value={newItemForm.locationName}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, locationName: e.target.value })}
+                      placeholder="例如：% Arabica Kyoto Arashiyama"
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      📝 簡要介紹 / 私房備註
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={newItemForm.description}
+                      onChange={(e) => setNewItemForm({ ...newItemForm, description: e.target.value })}
+                      placeholder="簡述為何想去、預估逗留時間或特色..."
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        🍜 必吃 (以逗號分隔)
+                      </label>
+                      <input
+                        type="text"
+                        value={newItemForm.mustEat}
+                        onChange={(e) => setNewItemForm({ ...newItemForm, mustEat: e.target.value })}
+                        placeholder="熱拿鐵, 抹茶可麗露"
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        🎁 必買 (以逗號分隔)
+                      </label>
+                      <input
+                        type="text"
+                        value={newItemForm.mustBuy}
+                        onChange={(e) => setNewItemForm({ ...newItemForm, mustBuy: e.target.value })}
+                        placeholder="限定保溫杯, 咖啡豆"
+                        className="w-full px-2.5 py-1.5 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-2">
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs rounded-2xl shadow-md"
+                    >
+                      確認新增至手帳
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -1438,7 +2483,10 @@ JSON 結構規範：
     // ==========================================
     // 行程卡片 Component
     // ==========================================
-    function ItineraryCard({ item, onNavigate, onOpenStory, onCopyCode }) {
+    function ItineraryCard({ item, isChecked, onToggleCheck, memo, onSaveMemo, onNavigate, onOpenStory, onCopyCode }) {
+      const [showMemoInput, setShowMemoInput] = useState(Boolean(memo));
+      const [memoText, setMemoText] = useState(memo || "");
+
       const typeConfig = {
         attraction: {
           badge: "景點名勝",
@@ -1469,7 +2517,15 @@ JSON 結構規範：
       const config = typeConfig[item.type] || typeConfig.attraction;
 
       return (
-        <div className={`relative bg-white/95 rounded-2xl p-3.5 border-2 ${config.cardBorder} shadow-xs transition-all duration-200`}>
+        <div className={`relative bg-white/95 rounded-2xl p-3.5 border-2 ${isChecked ? 'border-rose-300 bg-rose-50/20' : config.cardBorder} shadow-xs transition-all duration-200`}>
+          
+          {/* 已踩點手繪印章高光 */}
+          {isChecked && (
+            <div className="absolute top-2 right-2 z-10 pointer-events-none animate-in zoom-in-50 duration-150">
+              <SketchStamp />
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center space-x-2">
               <span className="font-mono text-xs font-black text-amber-900 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200">
@@ -1484,27 +2540,50 @@ JSON 結構規範：
               )}
             </div>
 
-            {item.bookingCode && (
+            <div className="flex items-center gap-1">
+              {item.bookingCode && (
+                <button
+                  onClick={(e) => onCopyCode(item.bookingCode, e)}
+                  className="group flex items-center space-x-1 px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-md text-[10px] font-mono font-bold shadow-2xs transition-all active:scale-95"
+                  title="點擊複製代號"
+                >
+                  <span>🔑</span>
+                  <span className="underline decoration-indigo-300">{item.bookingCode}</span>
+                  <span className="text-[9px] opacity-70 group-hover:opacity-100">📋</span>
+                </button>
+              )}
+
+              {/* 踩點印章切換按鈕 */}
               <button
-                onClick={(e) => onCopyCode(item.bookingCode, e)}
-                className="group flex items-center space-x-1 px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-md text-[10px] font-mono font-bold shadow-2xs transition-all active:scale-95"
-                title="點擊複製代號"
+                onClick={onToggleCheck}
+                title={isChecked ? "取消踩點" : "蓋上已踩點印章"}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all active:scale-90 ${
+                  isChecked
+                    ? 'bg-rose-100 text-rose-800 border-rose-300'
+                    : 'bg-stone-100 hover:bg-stone-200 text-stone-600 border-stone-200'
+                }`}
               >
-                <span>🔑</span>
-                <span className="underline decoration-indigo-300">{item.bookingCode}</span>
-                <span className="text-[9px] opacity-70 group-hover:opacity-100">📋</span>
+                {isChecked ? '💮 已踩點' : '⚪ 打卡'}
               </button>
-            )}
+            </div>
           </div>
 
           <div className="mt-2">
-            <h3 className="text-sm font-extrabold text-stone-900 leading-snug">
+            <h3 className={`text-sm font-extrabold leading-snug ${isChecked ? 'text-stone-700 line-through opacity-85' : 'text-stone-900'}`}>
               {item.title}
             </h3>
             <p className="text-xs text-stone-600 mt-1 leading-relaxed">
               {item.description}
             </p>
           </div>
+
+          {/* 預估航行 / 交通時間提示標籤 */}
+          {item.transitTime && (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-sky-900 bg-sky-50 border border-sky-200/80 px-2 py-1 rounded-lg shadow-2xs">
+              <span className="text-xs">⏱️</span>
+              <span>{item.transitTime}</span>
+            </div>
+          )}
 
           {/* 亮點標籤區 */}
           <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200/90 flex flex-wrap gap-1.5">
@@ -1530,8 +2609,45 @@ JSON 結構規範：
             ))}
           </div>
 
+          {/* 旅人私人筆記便籤 (隨手記) */}
+          <div className="mt-2">
+            {showMemoInput ? (
+              <div className="bg-amber-50/70 border border-dashed border-amber-300 rounded-xl p-2 text-xs space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-amber-900 font-bold">
+                  <span>✍️ 我的私人手帳備忘：</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!memoText.trim()) setShowMemoInput(false);
+                    }}
+                    className="text-stone-400 hover:text-stone-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
+                  value={memoText}
+                  onChange={(e) => setMemoText(e.target.value)}
+                  onBlur={() => onSaveMemo(memoText)}
+                  placeholder="隨手記下你的私房備忘（例如：要買抹茶捲給媽媽、門票只收現金...）"
+                  className="w-full p-1.5 bg-white border border-amber-200 rounded-lg text-stone-800 text-xs focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowMemoInput(true)}
+                className="text-[10px] text-stone-600 hover:text-amber-800 font-bold flex items-center gap-1 py-0.5"
+              >
+                <span>✍️</span>
+                <span className="underline decoration-dotted">新增這站的私人備忘筆記</span>
+              </button>
+            )}
+          </div>
+
           {/* 底部導航與故事 */}
-          <div className="mt-3 flex items-center justify-between gap-2 pt-1">
+          <div className="mt-2.5 flex items-center justify-between gap-2 pt-1 border-t border-stone-100">
             <div className="flex items-center text-[11px] text-stone-500 font-medium truncate">
               <span className="text-stone-400 mr-1">📍</span>
               <span className="truncate">{item.locationName}</span>
