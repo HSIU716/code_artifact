@@ -576,7 +576,7 @@
         }
       };
 
-      // 100% 純 Gemini API 行程規劃生成
+      // 100% 純 Gemini API 行程規劃生成 (修正模型端點與 JSON 雜訊解析)
       const handleGenerateAiTrip = async () => {
         const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
         
@@ -591,7 +591,7 @@
 
         const systemPrompt = `你是一位世界頂級的「旅行規劃專家」兼具深厚文化底蘊的「私房導遊」。
 請根據使用者的需求，以繁體中文 (台灣) 規劃一份極致精緻、手機閱讀友善的手繪風旅行手帳行程。
-你必須嚴格輸出合法的純 JSON 格式，不要包含任何 markdown 代碼塊外圍標記，也不要有額外文字。
+你必須嚴格輸出合法的純 JSON 格式，不要包含任何額外說明文字。
 
 JSON 結構規範：
 {
@@ -629,15 +629,15 @@ JSON 結構規範：
           "type": "attraction 或 food 或 transport 或 hotel",
           "title": "項目名稱",
           "locationName": "真實地點名稱",
-          "navQuery": "精確導航搜尋關鍵字 (英文或當地語言便於Google Maps導航)",
+          "navQuery": "精確導航搜尋關鍵字 (英文或當地語言便於地圖導航)",
           "duration": "預估逗留時間",
-          "description": "精鍊介紹 (約60字)",
+          "description": "精鍊介紹 (約50字)",
           "mustEat": ["必吃美食1", "必吃美食2"],
           "mustOrder": ["必點菜單1", "必點菜單2"],
           "mustBuy": ["必買伴手禮1", "必買伴手禮2"],
           "bookingCode": "預約代號或通票 (選填)",
           "storyAndTips": {
-            "story": "導遊私房景點故事與歷史人文典故 (約100字)",
+            "story": "導遊私房景點故事與歷史人文典故 (約80字)",
             "culturalTip": "在地文化習俗、禮儀或避坑小撇步",
             "photoSpot": "攝影愛好者絕景拍攝角度",
             "selfDriveTip": "自駕停車或路線指引"
@@ -652,51 +652,90 @@ JSON 結構規範：
 同行成員：${plannerForm.companion}
 預算期望：${plannerForm.budget}
 風格與偏好：${plannerForm.stylePreference}
-請確保每一天都有豐富的景點(attraction)、美食(food)、交通(transport)安排，並提供精確的地點導航關鍵字、必吃美食、必點菜單、必買伴手禮與深刻的導遊文化典故。`;
+請確保每一天都有豐富的景點(attraction)、美食(food)、交通/住宿安排，內容請保持精練以確保完整輸出合法 JSON。`;
 
         const apiPayload = {
           contents: [{ parts: [{ text: userQuery }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { responseMimeType: "application/json" }
+          generationConfig: { 
+            responseMimeType: "application/json"
+          }
         };
 
-        const delays = [1000, 2000, 4000, 8000, 16000];
+        // 依序嘗試標準端點 gemini-3-flash-preview 及備用端點 gemini-2.5-flash
+        const modelEndpoints = [
+          "gemini-3-flash-preview",
+          "gemini-2.5-flash"
+        ];
+
         let success = false;
         let resultJson = null;
+        let lastErrorMessage = "";
 
-        for (let attempt = 0; attempt < 5; attempt++) {
-          try {
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-              {
+        for (const modelName of modelEndpoints) {
+          if (success) break;
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+          
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(apiPayload)
+              });
+
+              if (!response.ok) {
+                const errData = await response.json().catch(() => null);
+                const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+                if (response.status === 400 && errMsg.includes("API key")) {
+                  lastErrorMessage = "API Key 格式不正確，請確認複製是否完整";
+                } else if (response.status === 403 || response.status === 401) {
+                  lastErrorMessage = "API Key 無效或尚未在 Google Cloud 啟用 Generative Language API";
+                } else if (response.status === 429) {
+                  lastErrorMessage = "超出 Google 呼叫頻率限制 (Quota exceeded)，請稍後再試";
+                } else {
+                  lastErrorMessage = errMsg;
+                }
+                throw new Error(lastErrorMessage);
               }
-            );
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            const data = await response.json();
-            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (textResponse) {
-              resultJson = JSON.parse(textResponse);
-              success = true;
-              break;
+
+              const data = await response.json();
+              const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+              if (textResponse) {
+                // 清洗可能的 markdown 代碼標記 (```json ... ```)
+                let cleaned = textResponse.trim();
+                if (cleaned.startsWith("```json")) {
+                  cleaned = cleaned.replace(/^```json\s*/i, "").replace(/\s*```$/, "");
+                } else if (cleaned.startsWith("```")) {
+                  cleaned = cleaned.replace(/^```\s*/, "").replace(/\s*```$/, "");
+                }
+
+                resultJson = JSON.parse(cleaned);
+                if (resultJson && Array.isArray(resultJson.days) && resultJson.days.length > 0) {
+                  success = true;
+                  break;
+                }
+              }
+            } catch (err) {
+              lastErrorMessage = err.message || "網路連線異常";
+              if (attempt < 2) {
+                await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
+              }
             }
-          } catch (err) {
-            if (attempt < 4) await new Promise(r => setTimeout(r, delays[attempt]));
           }
         }
 
         setIsGenerating(false);
 
-        if (success && resultJson && resultJson.days) {
+        if (success && resultJson) {
           setTripData(resultJson);
           setActiveDayIndex(0);
           setActiveCategory('all');
           setShowPlannerModal(false);
           triggerToast("✨ Gemini AI 已為您繪製完成全球專屬行程！");
         } else {
-          triggerToast("⚠️ AI 行程生成失敗！請檢查 API Key 是否正確或網路連線後重試。");
+          triggerToast(`⚠️ AI 生成失敗：${lastErrorMessage}`);
         }
       };
 
