@@ -15,6 +15,9 @@
   <!-- Babel Standalone (用來在瀏覽器即時編譯 JSX) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- LZ-String 高效網址短連結壓縮庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+
   <!-- Firebase 雲端自動同步模組 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -72,7 +75,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     // ==========================================
     // 🔑 在此處填入您的 Google Gemini API Key (選填，亦可於介面輸入)
@@ -1092,12 +1095,22 @@
     // 主應用程式 Component (App)
     // ==========================================
     function App() {
-      // 嘗試從 URL Hash 恢復儲存的行程
+      // 嘗試從 URL Hash 恢復儲存的行程 (支援 LZString 與 Base64)
       const initialTrip = useMemo(() => {
         try {
-          if (window.location.hash && window.location.hash.length > 10) {
-            const decoded = decodeURIComponent(atob(window.location.hash.substring(1)));
-            const parsed = JSON.parse(decoded);
+          if (window.location.hash && window.location.hash.length > 3) {
+            const hashStr = window.location.hash.substring(1);
+            let parsed = null;
+            if (window.LZString) {
+              const decompressed = window.LZString.decompressFromEncodedURIComponent(hashStr);
+              if (decompressed) {
+                parsed = JSON.parse(decompressed);
+              }
+            }
+            if (!parsed) {
+              const decoded = decodeURIComponent(atob(hashStr));
+              parsed = JSON.parse(decoded);
+            }
             if (parsed && Array.isArray(parsed.days) && parsed.days.length > 0) {
               return parsed;
             }
@@ -1114,10 +1127,12 @@
       const [showPlannerModal, setShowPlannerModal] = useState(false);
       const [showProfileModal, setShowProfileModal] = useState(false);
       const [showAddItemModal, setShowAddItemModal] = useState(false);
+      const [showShareModal, setShowShareModal] = useState(false);
       const [toastMessage, setToastMessage] = useState("");
       const [isGenerating, setIsGenerating] = useState(false);
       const [currentUser, setCurrentUser] = useState(null);
       const [cloudStatus, setCloudStatus] = useState("本機已保存");
+      const fileInputRef = useRef(null);
 
       // 旅人自訂設定：暱稱、出發日、打卡清單與私人備忘
       const [profile, setProfile] = useState(() => {
@@ -1237,8 +1252,14 @@
         };
 
         try {
-          const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
-          window.history.replaceState(null, "", `#${encoded}`);
+          const jsonStr = JSON.stringify(payload);
+          if (window.LZString) {
+            const compressed = window.LZString.compressToEncodedURIComponent(jsonStr);
+            window.history.replaceState(null, "", `#${compressed}`);
+          } else {
+            const encoded = btoa(encodeURIComponent(jsonStr));
+            window.history.replaceState(null, "", `#${encoded}`);
+          }
         } catch (e) {
           console.warn("URL persistence error", e);
         }
@@ -1327,11 +1348,82 @@
         triggerToast(`🎉 已將【${newItem.title}】加入今日手帳中！`);
       };
 
+      // 手機原生分享 / 複製連結
+      const handleNativeShare = async () => {
+        const shareUrl = window.location.href;
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `${profile.ownerName}的旅遊手帳 - ${tripData.destination}`,
+              text: `快來看看我們 ${tripData.daysCount || 14} 天的精彩行程！`,
+              url: shareUrl
+            });
+            triggerToast("💌 已開啟手機分享選單！");
+            return;
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              copyTextToClipboard(shareUrl);
+              triggerToast("💌 已複製手帳網址至剪貼簿！");
+            }
+          }
+        } else {
+          copyTextToClipboard(shareUrl);
+          triggerToast("💌 已複製專屬手帳壓縮網址，快發給旅伴吧！");
+        }
+      };
+
+      // 匯出手帳檔案 (.json)
+      const handleExportTripFile = () => {
+        try {
+          const payload = {
+            ...tripData,
+            profile,
+            checkedItemIds: Array.from(checkedItemIds),
+            userMemos
+          };
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+          const downloadAnchor = document.createElement('a');
+          downloadAnchor.setAttribute("href", dataStr);
+          downloadAnchor.setAttribute("download", `旅人手帳_${tripData.destination || "行程"}.json`);
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          downloadAnchor.remove();
+          triggerToast("📥 手帳旅行檔已成功匯出下載！");
+        } catch (err) {
+          triggerToast("匯出檔案失敗，請再試一次");
+        }
+      };
+
+      // 匯入手帳檔案 (.json)
+      const handleImportFileChange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = JSON.parse(event.target.result);
+            if (parsed && Array.isArray(parsed.days) && parsed.days.length > 0) {
+              setTripData(parsed);
+              if (parsed.profile) setProfile(parsed.profile);
+              if (parsed.checkedItemIds) setCheckedItemIds(new Set(parsed.checkedItemIds));
+              if (parsed.userMemos) setUserMemos(parsed.userMemos);
+              saveTripPersistence(parsed, parsed.profile || profile, new Set(parsed.checkedItemIds || []), parsed.userMemos || {});
+              setShowShareModal(false);
+              triggerToast("🎉 成功匯入手帳！已為您展開精彩行程！");
+            } else {
+              triggerToast("檔案格式不符，請確認是否為手帳 .json 檔");
+            }
+          } catch (err) {
+            triggerToast("解析手帳檔案失敗，請檢查檔案內容");
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      };
+
       // 複製專屬手帳分享連結 (安全使用 document.execCommand)
       const handleShareTrip = () => {
-        const url = window.location.href;
-        copyTextToClipboard(url);
-        triggerToast("💌 已複製專屬手帳專用分享網址，快發給旅伴吧！");
+        setShowShareModal(true);
       };
 
       // 監聽雲端儲存與使用者授權狀態
@@ -1641,7 +1733,14 @@ JSON 結構規範：
 
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={handleShareTrip}
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                    title="匯入旅伴傳給您的手帳檔案 (.json)"
+                    className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full text-xs font-bold transition-all active:scale-90 border border-stone-300/80"
+                  >
+                    📥
+                  </button>
+                  <button
+                    onClick={() => setShowShareModal(true)}
                     title="分享這本手帳給朋友"
                     className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-full text-xs font-bold transition-all active:scale-90 border border-stone-300/80"
                   >
@@ -2456,6 +2555,139 @@ JSON 結構規範：
               </div>
             </div>
           )}
+
+          {/* 彈出視窗 6：手帳專屬分享中心 Modal */}
+          {showShareModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800">
+                      <span className="text-base">💌</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-widest">
+                        旅伴分享中心
+                      </span>
+                      <h3 className="text-base font-extrabold text-stone-900">
+                        分享您的專屬旅遊手帳
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  {/* 選項 A：手機系統一鍵分享 */}
+                  <div className="bg-white p-3.5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-stone-900 text-xs flex items-center gap-1.5">
+                        <span>📲</span> 方法一：手機原生一鍵分享
+                      </span>
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md font-bold border border-emerald-200">
+                        極簡直覺
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-600">
+                      自動呼叫手機原生分享選單，可直接發送至 LINE 聊天室、Messenger 或 AirDrop。
+                    </p>
+                    <button
+                      onClick={handleNativeShare}
+                      className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold rounded-xl shadow-xs active:scale-98 flex items-center justify-center gap-1.5"
+                    >
+                      <span>💬</span>
+                      <span>呼叫手機分享 / 複製連結</span>
+                    </button>
+                  </div>
+
+                  {/* 選項 B：檔案直接傳送 (最佳防截斷方案) */}
+                  <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200/90 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-amber-950 text-xs flex items-center gap-1.5">
+                        <span>📁</span> 方法二：傳送「手帳檔案 (.json)」
+                      </span>
+                      <span className="text-[10px] text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-md font-bold border border-amber-300">
+                        ★ 推薦！不受網址長度限制
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-900">
+                      直接將整本手帳存成檔案（僅幾 KB），在 LINE 中當作檔案發給朋友，朋友點頂部「📥」即可秒載入！
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleExportTripFile}
+                        className="flex-1 py-2 bg-amber-700 hover:bg-amber-800 text-white font-extrabold rounded-xl shadow-xs active:scale-98 flex items-center justify-center gap-1"
+                      >
+                        <span>📥</span>
+                        <span>下載手帳檔 (.json)</span>
+                      </button>
+                      <button
+                        onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                        className="py-2 px-3 bg-white border border-amber-300 text-amber-900 font-bold rounded-xl active:scale-98"
+                      >
+                        匯入檔案
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 選項 C：LZ-String 壓縮分享連結 */}
+                  <div className="bg-white p-3.5 rounded-2xl border border-stone-200/90 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-stone-900 text-xs flex items-center gap-1.5">
+                        <span>🔗</span> 方法三：LZ 壓縮專用連結
+                      </span>
+                      <span className="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md font-bold border border-indigo-200">
+                        已減肥 75%
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-600">
+                      採用 LZ-String 演算法大幅壓縮，朋友在電腦或手機點開網址即可直接閱讀。
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value={window.location.href}
+                        className="flex-1 p-1.5 bg-stone-100 border border-stone-200 rounded-lg text-stone-500 font-mono text-[10px] truncate"
+                      />
+                      <button
+                        onClick={() => {
+                          copyTextToClipboard(window.location.href);
+                          triggerToast("💌 已成功複製壓縮網址！");
+                        }}
+                        className="px-3 py-1.5 bg-stone-900 text-white font-bold rounded-lg text-xs shrink-0 active:scale-95"
+                      >
+                        複製
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="w-full py-2.5 bg-stone-200 text-stone-700 font-extrabold text-xs rounded-2xl hover:bg-stone-300"
+                  >
+                    關閉
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 隱藏的檔案上傳輸入框 */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportFileChange}
+            accept=".json"
+            className="hidden"
+          />
 
           {/* Toast 提示 */}
           {toastMessage && (
