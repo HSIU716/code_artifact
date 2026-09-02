@@ -1119,7 +1119,7 @@
       const [currentUser, setCurrentUser] = useState(null);
       const [cloudStatus, setCloudStatus] = useState("本機已保存");
 
-      // 旅人自訂設定：暱稱、出發日、主題色系、打卡清單與私人備忘
+      // 旅人自訂設定：暱稱、出發日、打卡清單與私人備忘
       const [profile, setProfile] = useState(() => {
         return tripData.profile || {
           ownerName: "專屬旅人",
@@ -1370,7 +1370,7 @@
       }, []);
 
       const [plannerForm, setPlannerForm] = useState({
-        destination: "日本關西與近畿大縱走",
+        destination: "日本關西與近畿山海大縱走",
         departureCity: "台灣桃園 (TPE)",
         daysCount: 14,
         companion: "情侶 / 夫妻 / 深度慢活者",
@@ -1424,25 +1424,25 @@
         }
       };
 
-      // 100% 純 Gemini API 行程規劃生成 (採用 gemini-3-flash-preview，平台環境自動注入 Key)
+      // 100% 純 Gemini API 行程規劃生成 (上限14天)
       const handleGenerateAiTrip = async () => {
-        const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY || "").trim();
-
+        const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
+        
         setIsGenerating(true);
         if (apiKey) {
           localStorage.setItem("GEMINI_KEY", apiKey);
         }
 
-        const targetDays = Math.min(Math.max(Number(plannerForm.daysCount) || 1, 1), 30);
+        const targetDays = Math.min(Math.max(Number(plannerForm.daysCount) || 1, 1), 14);
 
         const systemPrompt = `你是一位世界頂級的「旅行規劃專家」兼具深厚文化底蘊的「私房導遊」。
 請根據使用者的需求，以繁體中文 (台灣) 規劃一份極致精緻、手機閱讀友善的手繪風旅行手帳行程。
 你必須嚴格輸出合法的純 JSON 格式，不要包含任何額外說明文字或 markdown 代碼標籤。
 
-【最核心天數與細節規則 - 必須 100% 嚴格執行】：
-1. 使用者指定的旅行天數為【${targetDays} 天】。
+【天數與細節規則 - 必須 100% 嚴格執行】：
+1. 使用者指定的旅行天數為【${targetDays} 天】（最多不超過 14 天）。
 2. 回傳的 JSON 根物件中的 "daysCount" 必須等於 ${targetDays}。
-3. "days" 陣列中必須『精確包含 ${targetDays} 個天數物件』，從 day: 1, day: 2 一路完整寫到 day: ${targetDays}！
+3. "days" 陣列中必須『精確包含 ${targetDays} 個天數物件』，從 day: 1 一路完整編號並排至 day: ${targetDays}！
 4. 絕對不可在中斷處省略或寫「以此類推」！每一天都必須有豐富真實的行程內容。
 5. 每一天請安排 2~4 個高水準項目 (attraction, food, transport, hotel)，包含景點、名店必吃/必點/必買、交通/自駕時間、預約代號與導遊私房故事。
 
@@ -1528,7 +1528,6 @@ JSON 結構規範：
         let resultJson = null;
         let lastErrorMessage = "";
 
-        // 採用指數退避重試機制
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const response = await fetch(apiUrl, {
@@ -1964,7 +1963,7 @@ JSON 結構規範：
                     className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-xs font-extrabold rounded-2xl shadow-md flex items-center justify-center gap-1.5"
                   >
                     <SketchPin className="w-4 h-4" />
-                    <span>立即開啟 Google 導航</span>
+                    <span>立即開啟地圖導航</span>
                   </button>
                 </div>
               </div>
@@ -2043,7 +2042,7 @@ JSON 結構規範：
             </div>
           )}
 
-          {/* 彈出視窗 3：AI 智能行程客製 Modal */}
+          {/* 彈出視窗 3：AI 智能行程客製 Modal (上限 14 天) */}
           {showPlannerModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
               <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
@@ -2057,7 +2056,7 @@ JSON 結構規範：
                         旅行規劃專家 AI
                       </span>
                       <h3 className="text-base font-extrabold text-stone-900">
-                        為您客製全球手繪行程
+                        為您客製全球手繪行程 (最多 14 天)
                       </h3>
                     </div>
                   </div>
@@ -2081,7 +2080,7 @@ JSON 結構規範：
                       onClick={() => setShowKeyInput(!showKeyInput)}
                       className="text-[11px] text-amber-800 underline font-bold"
                     >
-                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已自訂 Key (點擊修改) ▼" : "自訂 Key (部署至個人網站時填寫) ▼")}
+                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已設定 (點擊修改) ▼" : "輸入 Key ▼")}
                     </button>
                   </div>
                   {showKeyInput && (
@@ -2090,11 +2089,11 @@ JSON 結構規範：
                         type="password"
                         value={apiKeyInput}
                         onChange={(e) => setApiKeyInput(e.target.value)}
-                        placeholder="在 GitHub Pages 等外部網站運行時請貼上 Key (AIzaSy...)"
+                        placeholder="請貼上 Google Gemini API Key (例如: AIzaSy...)"
                         className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-stone-800 font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                       />
                       <div className="flex items-center justify-between text-[10px] text-amber-800">
-                        <span>預覽環境留空即可直接使用；外部部署需填寫</span>
+                        <span>需要 API Key 才能執行 AI 即時規劃</span>
                         <a
                           href="https://aistudio.google.com/app/apikey"
                           target="_blank"
@@ -2139,16 +2138,16 @@ JSON 結構規範：
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-stone-700 block mb-1">
-                        📅 旅行天數 (最多 30 天)
+                        📅 旅行天數 (最多 14 天)
                       </label>
                       <select
                         value={plannerForm.daysCount}
                         onChange={(e) => setPlannerForm({ ...plannerForm, daysCount: Number(e.target.value) })}
                         className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                       >
-                        {Array.from({ length: 30 }, (_, i) => i + 1).map(n => (
+                        {Array.from({ length: 14 }, (_, i) => i + 1).map(n => (
                           <option key={n} value={n}>
-                            {n} 天 {n === 14 ? '★ (推薦深度漫遊)' : n <= 3 ? '(極速快閃)' : n <= 7 ? '(經典行程)' : n <= 14 ? '(深度慢活)' : '(極致長途漫遊)'}
+                            {n} 天 {n === 14 ? '★ (推薦深度漫遊)' : n <= 3 ? '(極速快閃)' : n <= 7 ? '(經典行程)' : '(深度慢活)'}
                           </option>
                         ))}
                       </select>
@@ -2227,7 +2226,7 @@ JSON 結構規範：
             </div>
           )}
 
-          {/* 彈出視窗 4：旅人專屬手帳客製設定 Modal */}
+          {/* 彈出視窗 4：旅人專屬手帳客製設定 Modal (含主題色彩與倒數) */}
           {showProfileModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
               <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
@@ -2315,7 +2314,7 @@ JSON 結構規範：
                     }}
                     className="w-full py-2.5 bg-stone-900 text-white font-extrabold text-xs rounded-2xl shadow-md"
                   >
-                    儲存專屬手帳風格
+                    儲存手帳風格設定
                   </button>
                 </div>
               </div>
