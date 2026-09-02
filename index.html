@@ -15,6 +15,43 @@
   <!-- Babel Standalone (用來在瀏覽器即時編譯 JSX) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- Firebase 雲端自動同步模組 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const isAvailable = typeof __firebase_config !== 'undefined';
+    if (isAvailable) {
+      try {
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        window.__cloudStore = {
+          app,
+          auth,
+          db,
+          appId,
+          doc,
+          getDoc,
+          setDoc,
+          onSnapshot,
+          signIn: async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              return await signInWithCustomToken(auth, __initial_auth_token);
+            }
+            return await signInAnonymously(auth);
+          }
+        };
+      } catch (e) {
+        console.warn("Cloud store initialization skipped", e);
+      }
+    }
+  </script>
+
   <style>
     /* 隱藏滾動條但保留滑動功能 */
     .no-scrollbar::-webkit-scrollbar {
@@ -500,7 +537,21 @@
     // 主應用程式 Component (App)
     // ==========================================
     function App() {
-      const [tripData, setTripData] = useState(DEFAULT_TRIP);
+      // 嘗試從 URL Hash 恢復儲存的行程
+      const initialTrip = useMemo(() => {
+        try {
+          if (window.location.hash && window.location.hash.length > 10) {
+            const decoded = decodeURIComponent(atob(window.location.hash.substring(1)));
+            const parsed = JSON.parse(decoded);
+            if (parsed && Array.isArray(parsed.days) && parsed.days.length > 0) {
+              return parsed;
+            }
+          }
+        } catch (e) {}
+        return DEFAULT_TRIP;
+      }, []);
+
+      const [tripData, setTripData] = useState(initialTrip);
       const [activeDayIndex, setActiveDayIndex] = useState(0);
       const [activeCategory, setActiveCategory] = useState('all');
       const [selectedStoryItem, setSelectedStoryItem] = useState(null);
@@ -508,10 +559,70 @@
       const [showPlannerModal, setShowPlannerModal] = useState(false);
       const [toastMessage, setToastMessage] = useState("");
       const [isGenerating, setIsGenerating] = useState(false);
+      const [currentUser, setCurrentUser] = useState(null);
+      const [cloudStatus, setCloudStatus] = useState("本機已保存");
       const [apiKeyInput, setApiKeyInput] = useState(() => {
         return localStorage.getItem("GEMINI_KEY") || DEFAULT_GEMINI_API_KEY;
       });
       const [showKeyInput, setShowKeyInput] = useState(false);
+
+      // 自動將行程持久化至網址與雲端儲存
+      const saveTripPersistence = async (newTrip, user = currentUser) => {
+        try {
+          // 1. 同步更新至網址錨點，重整網頁或將網址分享給旅伴都能即時開啟相同行程
+          const encoded = btoa(encodeURIComponent(JSON.stringify(newTrip)));
+          window.history.replaceState(null, "", `#${encoded}`);
+        } catch (e) {
+          console.warn("URL persistence error", e);
+        }
+
+        // 2. 若支援雲端同步，則自動備份至專屬雲端空間
+        if (window.__cloudStore && user) {
+          const { db, appId, doc, setDoc } = window.__cloudStore;
+          try {
+            const tripDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trips', 'activeTrip');
+            await setDoc(tripDocRef, {
+              trip: newTrip,
+              updatedAt: Date.now()
+            });
+            setCloudStatus("雲端已同步");
+          } catch (err) {
+            console.warn("Cloud persistence err", err);
+          }
+        }
+      };
+
+      // 監聽雲端儲存與使用者授權狀態
+      useEffect(() => {
+        if (!window.__cloudStore) return;
+        const { auth, signIn, db, appId, doc, onSnapshot } = window.__cloudStore;
+        let unsubscribeDoc = null;
+
+        signIn().then((cred) => {
+          const user = cred?.user || auth.currentUser;
+          if (!user) return;
+          setCurrentUser(user);
+
+          const tripDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trips', 'activeTrip');
+          unsubscribeDoc = onSnapshot(tripDocRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const data = snapshot.data();
+              if (data && data.trip && Array.isArray(data.trip.days)) {
+                setTripData(data.trip);
+                setCloudStatus("雲端已同步");
+              }
+            }
+          }, (err) => {
+            console.debug("Cloud sync snapshot error:", err);
+          });
+        }).catch(err => {
+          console.debug("Cloud auth error:", err);
+        });
+
+        return () => {
+          if (unsubscribeDoc) unsubscribeDoc();
+        };
+      }, []);
 
       const [plannerForm, setPlannerForm] = useState({
         destination: "瑞士少女峰與策馬特",
@@ -730,13 +841,22 @@ JSON 結構規範：
 
         if (success && resultJson) {
           setTripData(resultJson);
+          saveTripPersistence(resultJson, currentUser);
           setActiveDayIndex(0);
           setActiveCategory('all');
           setShowPlannerModal(false);
-          triggerToast("✨ Gemini AI 已為您繪製完成全球專屬行程！");
+          triggerToast("✨ 行程已生成並已自動為您保存！");
         } else {
           triggerToast(`⚠️ AI 生成失敗：${lastErrorMessage}`);
         }
+      };
+
+      const handleResetDefaultTrip = () => {
+        setTripData(DEFAULT_TRIP);
+        saveTripPersistence(DEFAULT_TRIP, currentUser);
+        setActiveDayIndex(0);
+        setActiveCategory('all');
+        triggerToast("🔄 已還原為預設示範行程！");
       };
 
       return (
@@ -757,7 +877,9 @@ JSON 結構規範：
                       <span className="text-[10px] font-bold tracking-wider text-amber-700 uppercase bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200/60">
                         隨身手帳
                       </span>
-                      <span className="text-[11px] text-stone-500 font-medium">{tripData.companion}</span>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 rounded-sm font-bold">
+                        ● {cloudStatus}
+                      </span>
                     </div>
                     <h1 className="text-base font-extrabold text-[#231F20] tracking-tight leading-snug line-clamp-1">
                       {tripData.destination}
@@ -765,13 +887,22 @@ JSON 結構規範：
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setShowPlannerModal(true)}
-                  className="group flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-all"
-                >
-                  <SketchSparkles className="w-3.5 h-3.5 animate-spin text-amber-200" style={{ animationDuration: '8s' }} />
-                  <span>AI 客製</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleResetDefaultTrip}
+                    title="重置為京都示範行程"
+                    className="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-full text-xs font-bold transition-all active:scale-90 border border-stone-300/80"
+                  >
+                    🔄
+                  </button>
+                  <button
+                    onClick={() => setShowPlannerModal(true)}
+                    className="group flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-all"
+                  >
+                    <SketchSparkles className="w-3.5 h-3.5 animate-spin text-amber-200" style={{ animationDuration: '8s' }} />
+                    <span>AI 客製</span>
+                  </button>
+                </div>
               </div>
 
               {/* 地理特徵與氣候概覽條 */}
