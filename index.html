@@ -1,1356 +1,1442 @@
-import React, { useState, useEffect, useMemo } from 'react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>旅人手帳 - 手繪風智能旅遊導遊小工具</title>
 
-// ==========================================
-// 手繪風格圖標與插圖組件 (純 SVG 繪製，無外部依賴)
-// ==========================================
-const SketchPin = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-    <circle cx="12" cy="9" r="2.5" fill="currentColor" fillOpacity="0.2" />
-    <path d="M8 9a4 4 0 0 1 8 0" strokeDasharray="1 2" />
-  </svg>
-);
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-const SketchCar = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 17h14M3 11l2-5h14l2 5M3 11v6a1 1 0 0 0 1 1h1m16-7v6a1 1 0 0 1-1 1h-1" />
-    <circle cx="7.5" cy="16.5" r="2.5" />
-    <circle cx="16.5" cy="16.5" r="2.5" />
-    <path d="M9 6l-1 5h8l-1-5" strokeDasharray="2 2" />
-  </svg>
-);
+  <!-- React & ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-const SketchFood = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-    <line x1="6" y1="2" x2="6" y2="5" />
-    <line x1="10" y1="2" x2="10" y2="5" />
-    <line x1="14" y1="2" x2="14" y2="5" />
-  </svg>
-);
+  <!-- Babel Standalone (用來在瀏覽器即時編譯 JSX) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-const SketchAttraction = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" />
-    <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
-  </svg>
-);
-
-const SketchHotel = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 7v14M21 7v14M3 12h18M7 12V9a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
-    <circle cx="9" cy="9" r="1" fill="currentColor" />
-  </svg>
-);
-
-const SketchSun = ({ className = "w-6 h-6 text-amber-500" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="4" fill="#FDE68A" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-    <path d="M9 11a1 1 0 0 1 2 0M13 11a1 1 0 0 1 2 0M10 14c.7.5 1.3.5 2 0" />
-  </svg>
-);
-
-const SketchRain = ({ className = "w-6 h-6 text-blue-500" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.5 19H6a4 4 0 0 1-1.3-7.8A5 5 0 0 1 14.5 9a3.5 3.5 0 0 1 3 10z" fill="#DBEAFE" />
-    <path d="M8 21l-1 2M12 21l-1 2M16 21l-1 2" strokeDasharray="1 1" />
-  </svg>
-);
-
-const SketchCloud = ({ className = "w-6 h-6 text-slate-500" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.5 19H6a4 4 0 0 1-1.3-7.8A5 5 0 0 1 14.5 9a3.5 3.5 0 0 1 3 10z" fill="#F1F5F9" />
-  </svg>
-);
-
-const SketchBook = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-    <path d="M8 7h8M8 11h6" strokeDasharray="1 1" />
-  </svg>
-);
-
-const SketchCompass = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="#F87171" fillOpacity="0.4" />
-  </svg>
-);
-
-const SketchSparkles = ({ className = "w-5 h-5" }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" fill="#FBBF24" />
-    <path d="M19 17l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z" fill="#F59E0B" />
-  </svg>
-);
-
-const TapeEffect = ({ color = "bg-amber-100/80", className = "" }) => (
-  <div className={`h-4 w-16 -rotate-3 rounded-xs border-t border-b border-amber-300/40 shadow-xs backdrop-blur-xs ${color} ${className}`} />
-);
-
-// ==========================================
-// 預設經典自駕示範行程：京都宇治楓葉慢活自駕 5 日
-// ==========================================
-const DEFAULT_TRIP = {
-  destination: "日本・京都與宇治秘境自駕行",
-  subtitle: "秋季紅葉古寺、茶香與米其林私房料理探索",
-  daysCount: 5,
-  companion: "情侶 / 雙人自由行",
-  budget: "中高預算 (約 NT$ 45,000 / 人)",
-  season: "秋季 (11月中旬・紅葉季)",
-  geographyOverview: {
-    topography: "京都盆地地形，三面環山，宇治川流域濕度較高，山區與市區溫差顯著。",
-    climate: "秋高氣爽但日夜溫差高達 10~12°C，清晨及傍晚帶有清涼山風，偶有地形微雨。",
-    safetyHealth: "步道石階長青苔易滑，建議穿著抓地力佳健走鞋；隨身攜帶保溫瓶與潤喉糖。",
-    packingSummary: "洋蔥式穿法（發熱衣+羊毛開襟衫+防風外套）、防滑健行鞋、輕量折傘、保濕乳液。"
-  },
-  days: [
-    {
-      day: 1,
-      date: "2026-11-15 (週日)",
-      title: "嵐山古風自駕・竹林茶席與私房豆腐",
-      cityOrArea: "京都・嵐山 / 嵯峨野",
-      weather: {
-        temp: "11°C ~ 19°C",
-        condition: "晴時多雲 (舒服秋涼)",
-        icon: "sunny",
-        humidity: "58%",
-        clothingTip: "早晚穿防風長版大衣，午後散步單穿針織衫即可，建議搭配輕暖圍巾。",
-        geographyNote: "嵐山保津川沿岸風勢稍大，水氣充足，體感比市區低 2°C。",
-        safetyHealthTip: "嵯峨野小徑車輛少但路幅窄，自駕請減速禮讓步行遊客與人力車。"
-      },
-      items: [
-        {
-          id: "d1-1",
-          time: "09:30",
-          type: "attraction",
-          title: "嵐山渡月橋 & 天龍寺曹源池庭園",
-          locationName: "天龍寺 (Tenryu-ji)",
-          navQuery: "Tenryu-ji Temple Kyoto",
-          duration: "2.5 小時",
-          description: "名列世界文化遺產，漫步於曹源池借景嵐山的迴遊式庭園，秋天紅葉倒映池水如夢似幻。",
-          mustBuy: ["天龍寺限定結緣御守", "嵐山和紙香包"],
-          storyAndTips: {
-            story: "天龍寺由室町幕府初代將軍足利尊氏為撫慰後醍醐天皇亡靈而建，曹源池是日本現存最早的史跡特別名勝庭園。",
-            culturalTip: "進入方丈殿請脫鞋並輕聲細語，禁止在榻榻米上飲食或使用三腳架攝影。",
-            selfDriveTip: "天龍寺前專用停車場（¥1,000/次）上午10點前抵達通常有空位。"
-          }
-        },
-        {
-          id: "d1-2",
-          time: "12:15",
-          type: "food",
-          title: "嵯峨野 嵯峨豆腐稻 (北店)",
-          locationName: "嵯峨とうふ 稲 北店",
-          navQuery: "Saga Tofu Ine North Branch Kyoto",
-          duration: "1.5 小時",
-          description: "緊鄰竹林小徑入口，以京都純淨伏流水現磨手工湯葉（生豆皮）與胡麻豆腐聞名。",
-          mustEat: ["手作生湯葉御膳", "胡麻豆腐", "櫻花葛餅"],
-          mustOrder: ["嵐山特選御膳 (含炙燒白味噌豆皮)"],
-          bookingCode: "INE-RSV-8819",
-          storyAndTips: {
-            story: "京都傳統水質極為軟嫩清甜，造就數百年頂級豆腐工藝，古時僧侶修行的素食精進料理在此昇華為極致美食。",
-            culturalTip: "日本吃湯豆腐建議先品嚐原味甘甜，再沾少量特製高湯醬油與山葵。"
-          }
-        },
-        {
-          id: "d1-3",
-          time: "14:30",
-          type: "attraction",
-          title: "常寂光寺・幽靜紅葉階梯秘境",
-          locationName: "常寂光寺 (Jojakko-ji)",
-          navQuery: "Jojakko-ji Temple Kyoto",
-          duration: "2 小時",
-          description: "依小倉山而建的古剎，多寶塔四周被如火紅葉圍繞，可俯瞰整個京都盆地壯麗全景。",
-          mustBuy: ["小倉百人一首紀念木籤", "楓葉拓印明信片"],
-          storyAndTips: {
-            story: "此處相傳是平安時代歌人藤原定家編纂《小倉百人一首》的和歌故居遺址，充滿詩意文學靈魂。",
-            photoSpot: "仁王門通往本堂的茅草屋頂石階兩側，下午 3 點斜陽透過紅葉落光斑最美。"
-          }
-        },
-        {
-          id: "d1-4",
-          time: "17:30",
-          type: "transport",
-          title: "行經保津川觀景自駕道 往 嵐山溫泉旅宿",
-          locationName: "嵐山溫泉 花傳抄",
-          navQuery: "Kadensho Arashiyama Onsen Kyoto",
-          duration: "40 分鐘",
-          description: "沿著桂川景觀公路徐行，避開傍晚市區塞車，直接抵達日式天然溫泉會館。",
-          bookingCode: "HOTEL-KD-202611",
-          storyAndTips: {
-            selfDriveTip: "飯店附設免費住客立體停車場，導航設定後直接開至迎賓車道即可。"
-          }
-        }
-      ]
-    },
-    {
-      day: 2,
-      date: "2026-11-16 (週一)",
-      title: "金閣光影與大德寺茶道禪意之日",
-      cityOrArea: "京都・北野 / 鷹峯",
-      weather: {
-        temp: "10°C ~ 18°C",
-        condition: "晴朗微風",
-        icon: "sunny",
-        humidity: "52%",
-        clothingTip: "白天陽光溫煦，適合著薄長袖上衣加針織背心，傍晚加厚外套。",
-        geographyNote: "北區靠近比叡山山腳，空氣清新，午後地表降溫快。",
-        safetyHealthTip: "寺院多為天然木質階梯與石板路，請留意腳下防滑。"
-      },
-      items: [
-        {
-          id: "d2-1",
-          time: "09:00",
-          type: "attraction",
-          title: "鹿苑寺（金閣寺）晨光鏡湖池倒影",
-          locationName: "金閣寺 (Kinkaku-ji)",
-          navQuery: "Kinkaku-ji Temple Kyoto",
-          duration: "1.5 小時",
-          description: "三層樓閣貼滿純金箔，頂端立有象徵吉祥的金銅鳳凰，襯托楓紅與鏡湖池倒影震撼心靈。",
-          mustBuy: ["舍利殿御守護符（兼具門票功能）", "純金箔金平糖"],
-          storyAndTips: {
-            story: "由將軍足利義滿於1397年建造，巧妙結合公家寢殿造、武家住宅與禪宗佛堂三種截然不同的建築風格。",
-            photoSpot: "入口驗票後轉角的第一個鏡湖池觀景台，上午 9:00~10:30 順光拍攝金箔反光最耀眼。"
-          }
-        },
-        {
-          id: "d2-2",
-          time: "11:30",
-          type: "food",
-          title: "北野 一本鳥居 粟餅所 澤屋",
-          locationName: "粟餅所 澤屋 (Sawaya)",
-          navQuery: "Sawaya Awamochi Kyoto",
-          duration: "45 分鐘",
-          description: "創業於天正十五年（1587年）的400年老店，現點現做的小米麻糬，軟糯不甜膩。",
-          mustEat: ["現作紅豆泥粟餅", "特濃黃豆粉小米年糕"],
-          mustOrder: ["紅白粟餅雙拼抹茶套餐"],
-          storyAndTips: {
-            story: "豐臣秀吉在北野天滿宮舉辦北野大茶會時，相傳曾親口讚賞過澤屋的精湛粟餅手藝。",
-            culturalTip: "店內空間小巧，現做粟餅賞味期僅有半天，建議在店內新鮮享用。"
-          }
-        },
-        {
-          id: "d2-3",
-          time: "13:30",
-          type: "attraction",
-          title: "大德寺高桐院・竹林苔原與楓葉地毯",
-          locationName: "大德寺 高桐院 (Koto-in)",
-          navQuery: "Daitoku-ji Koto-in Kyoto",
-          duration: "2 小時",
-          description: "戰國名將兼茶道名家細川忠興建立的塔頭，石板參道兩側覆蓋厚實翠綠青苔與落楓。",
-          mustBuy: ["高桐院枯山水明信片", "大德寺一休納豆"],
-          storyAndTips: {
-            story: "千利休曾在大德寺修禪，院內的意北軒為千利休茶室遺構，散發深邃無比的『侘寂（Wabi-Sabi）』美學。",
-            culturalTip: "若有幸參與茶席體驗，右手持茶碗、左手托底，順時針旋轉兩次避開茶碗正面再飲用。"
-          }
-        },
-        {
-          id: "d2-4",
-          time: "18:00",
-          type: "food",
-          title: "祇園 炭火懷石 割烹 匠",
-          locationName: "祇園 割烹 肉匠 (Gion Takumi)",
-          navQuery: "Gion Kappo Kyoto",
-          duration: "2 小時",
-          description: "主打當令丹波松茸、炭火近江牛與京都黑七味燉煮海鮮的極致割烹晚宴。",
-          mustEat: ["炭火備長炭近江牛菲力", "丹波松茸土瓶蒸", "鮭魚卵釜飯"],
-          mustOrder: ["季節廚師無菜單懷石套餐 (Omakase)"],
-          bookingCode: "GION-OMK-7741",
-          storyAndTips: {
-            culturalTip: "高級割烹料理店請避免噴灑過於濃烈之香水，以利細細品嗅柴魚高湯與松茸之本味。"
-          }
-        }
-      ]
-    },
-    {
-      day: 3,
-      date: "2026-11-17 (週二)",
-      title: "宇治川漫步・世界遺產平等院與抹茶究極朝聖",
-      cityOrArea: "宇治市 (Uji)",
-      weather: {
-        temp: "12°C ~ 20°C",
-        condition: "早晨薄霧，午後艷陽",
-        icon: "sunny",
-        humidity: "65%",
-        clothingTip: "宇治川畔風涼，建議搭配防風薄外套，午後穿著棉質襯衫即可。",
-        geographyNote: "宇治川自琵琶湖流出，清晨河面常有浪漫晨霧，水氣充足盛產優質茶葉。",
-        safetyHealthTip: "宇治川中之島沙洲石子路多，建議穿著平底休閒鞋。"
-      },
-      items: [
-        {
-          id: "d3-1",
-          time: "09:30",
-          type: "attraction",
-          title: "平等院 鳳凰堂 & 鳳翔館博物館",
-          locationName: "平等院 鳳凰堂 (Byodoin Temple)",
-          navQuery: "Byodoin Temple Uji",
-          duration: "2.5 小時",
-          description: "日幣萬圓大鈔背面鳳凰與十圓硬幣上的國寶殿堂，阿字池畔呈現西方極樂淨土的具象化。",
-          mustBuy: ["平等院限定純銅鳳凰書籤", "極樂淨土梵鐘香"],
-          storyAndTips: {
-            story: "藤原賴通於1053年將父親藤原道長的別莊改建為佛寺，內部供奉高達2.8公尺的阿彌陀如來坐像及52尊雲中供養菩薩。",
-            photoSpot: "正面隔著阿字池，用 10 圓硬幣置於相機前前景對焦鳳凰堂，極具紀念趣味。"
-          }
-        },
-        {
-          id: "d3-2",
-          time: "12:30",
-          type: "food",
-          title: "中村藤吉 本店・宇治百年茶寮",
-          locationName: "中村藤吉 本店 (Nakamura Tokichi Main Store)",
-          navQuery: "Nakamura Tokichi Main Store Uji",
-          duration: "1.5 小時",
-          description: "創立於安政元年的茶商巨擘，在百年町家土藏造院落中品嚐以竹筒盛裝的手工抹茶生茶凍。",
-          mustEat: ["竹筒生茶凍（生ちゃぜりい）", "現磨抹茶冷麵蕎麥", "濃茶霜淇淋"],
-          mustOrder: ["季節限定 栗子蒙布朗抹茶芭菲"],
-          mustBuy: ["初昔 / 祥の昔 典藏抹茶粉", "抹茶千層派禮盒"],
-          bookingCode: "NAKA-WAIT-QR",
-          storyAndTips: {
-            story: "中村藤吉曾多次榮膺日本皇室御用茶銘柄，昔日茶商驗茶用的『黑室』至今仍完整保存於本店內。"
-          }
-        },
-        {
-          id: "d3-3",
-          time: "15:00",
-          type: "attraction",
-          title: "宇治神社 & 宇治上神社（日本最古老神社建築）",
-          locationName: "宇治上神社 (Ujigami Shrine)",
-          navQuery: "Ujigami Shrine Uji",
-          duration: "1.5 小時",
-          description: "隱身於朝日山山腳的日本最古老神社本殿，以獨特的『回頭兔（見返り兎）』指引良善之路由名。",
-          mustBuy: ["手繪彩色兔子神籤陶偶", "桐原水清酒繪馬"],
-          storyAndTips: {
-            story: "相傳莵道稚郎子王子迷路時，有一隻聰慧靈兔頻頻回頭指引方向，因此兔子在此被奉為指引幸福人生明路的使者。"
-          }
-        }
-      ]
-    },
-    {
-      day: 4,
-      date: "2026-11-18 (週三)",
-      title: "伏見千本鳥居・伏見酒藏與石牆小徑探秘",
-      cityOrArea: "京都・伏見 / 宇治川南岸",
-      weather: {
-        temp: "9°C ~ 17°C",
-        condition: "多雲時陰，傍晚清涼",
-        icon: "cloudy",
-        humidity: "60%",
-        clothingTip: "稻荷山健行路程較長，建議穿吸濕排汗內層，並備好輕便保暖外套防風。",
-        geographyNote: "稻荷山地勢多石階斜坡，林木茂密陰涼，自駕往返市區動線流暢。",
-        safetyHealthTip: "爬稻荷山請留意體力分配，中途設有多處茶屋可補充水分。"
-      },
-      items: [
-        {
-          id: "d4-1",
-          time: "08:30",
-          type: "attraction",
-          title: "伏見稻荷大社・清晨千本鳥居秘境巡禮",
-          locationName: "伏見稻荷大社 (Fushimi Inari Taisha)",
-          navQuery: "Fushimi Inari Taisha Kyoto",
-          duration: "2.5 小時",
-          description: "全日本三萬座稻荷神社總本宮，數以萬計的朱紅色鳥居如隧道般蜿蜒整座稻荷山。",
-          mustBuy: ["白狐造型祈願繪馬", "金運御守與開運狐狸鈴鐺"],
-          storyAndTips: {
-            story: "鳥居由信眾為祈求商賣繁盛或感謝心願達成而奉納，最古老的鳥居可追溯至江戶時期，朱紅顏料含丹砂能防腐驅邪。",
-            photoSpot: "清晨8:30前抵達『奧社奉拜所』前的雙分岔鳥居，最能拍出無人的神聖幽靜空景。"
-          }
-        },
-        {
-          id: "d4-2",
-          time: "12:00",
-          type: "food",
-          title: "伏見 十石舟河畔 鳥せい (Tori-sei 本店)",
-          locationName: "鳥せい 本店 (Torisei)",
-          navQuery: "Torisei Honten Fushimi",
-          duration: "1.5 小時",
-          description: "由近三百年清酒廠『神聖』改建而成，以酒廠名水『白菊水』烹製極品備長炭火燒鳥串燒。",
-          mustEat: ["原酒生清酒試飲", "炭火雞肉串燒拼盤", "特製酒粕拉麵"],
-          mustOrder: ["神聖酒造 藏出し原酒 (冰鎮現汲)"],
-          storyAndTips: {
-            story: "伏見地下擁有全日本最頂級的優質中硬度伏流水，古稱『伏水』，造就了安土桃山時代以來的清酒聖地傳奇。"
-          }
-        },
-        {
-          id: "d4-3",
-          time: "14:30",
-          type: "attraction",
-          title: "月桂冠大倉紀念館 & 伏見十石舟運河",
-          locationName: "月桂冠大倉紀念館 (Gekkeikan Okura Sake Museum)",
-          navQuery: "Gekkeikan Okura Sake Museum Fushimi",
-          duration: "2 小時",
-          description: "沿著柳樹搖曳的濠川運河漫步，探訪江戶時代白壁土藏釀酒庫房，親身品嚐清酒原酒。",
-          mustBuy: ["伏見限定大吟釀生原酒", "清酒酒粕面膜與酒粕香皂"],
-          storyAndTips: {
-            culturalTip: "自駕駕駛者請嚴格遵守『酒後絕不開車』，酒廠提供專屬無酒精甘酒與極品名水試飲。"
-          }
-        }
-      ]
-    },
-    {
-      day: 5,
-      date: "2026-11-19 (週四)",
-      title: "錦市場廚房尋味・清水寺舞台壓軸與伴手禮大採買",
-      cityOrArea: "京都・四條 / 東山",
-      weather: {
-        temp: "11°C ~ 19°C",
-        condition: "晴空萬里",
-        icon: "sunny",
-        humidity: "55%",
-        clothingTip: "舒適便服搭配好穿脫的球鞋，準備大容量折疊購物袋採買伴手禮。",
-        geographyNote: "東山清水坂為緩升斜坡石板街道，人潮熱絡。",
-        safetyHealthTip: "清水寺參道人潮眾多，自駕建議停放在五條坂公營地下停車場後步行。"
-      },
-      items: [
-        {
-          id: "d5-1",
-          time: "09:00",
-          type: "attraction",
-          title: "清水寺・清水舞台與音羽之瀧靈水",
-          locationName: "清水寺 (Kiyomizu-dera)",
-          navQuery: "Kiyomizu-dera Kyoto",
-          duration: "2.5 小時",
-          description: "完全未用一根鐵釘、由139根巨大櫸木架構懸空於崖壁上的國寶木造舞台，氣勢磅礡。",
-          mustBuy: ["清水寺頭痛平癒守", "產寧坂七味家本舖極上七味粉"],
-          storyAndTips: {
-            story: "日本俗諺『從清水舞台跳下（清水の舞台から飛び降りる）』比喻下定絕心破釜沉舟。音羽之瀧三道清泉分別代表健康、學業與良緣，僅能選一道飲用以保心誠則靈。",
-            photoSpot: "站在奧之院迴廊回望清水舞台與錦繡秋楓，是京都明信片上的經典取景角。"
-          }
-        },
-        {
-          id: "d5-2",
-          time: "12:00",
-          type: "food",
-          title: "京都的廚房：錦市場漫步老街",
-          locationName: "錦市場 (Nishiki Market)",
-          navQuery: "Nishiki Market Kyoto",
-          duration: "2 小時",
-          description: "擁有400年歷史的狹長商店街，聚集上百家販售京都醬菜、玉子燒、鮮海味與和菓子的老舖。",
-          mustEat: ["三木雞卵 高湯玉子燒", "田中雞肉 炸雞球", "櫂 KAI 章魚鵪鶉蛋"],
-          mustOrder: ["現烤生蠔配柚子胡椒", "豆乳甜甜圈"],
-          mustBuy: ["打田漬物 柴漬醬菜", "有次 鍛造手工京料理菜刀"],
-          storyAndTips: {
-            culturalTip: "為維持街道整潔與禮貌，錦市場現已禁止邊走邊吃，請在購買店家指定的專用立食區內享用完畢再離開。"
-          }
-        },
-        {
-          id: "d5-3",
-          time: "15:00",
-          type: "hotel",
-          title: "京都車站前取回行李・自駕還車與返回",
-          locationName: "京都站 Times Car Rental",
-          navQuery: "Times Car Rental Kyoto Station",
-          duration: "1 小時",
-          description: "抵達京都站完成加滿油還車檢查手續，於站內伴手禮街做最後採買後前往機場。",
-          bookingCode: "CAR-RET-09882",
-          storyAndTips: {
-            selfDriveTip: "還車前請於京都站周邊加油站加滿油（Regular 汽油），並保留加油發票供租車公司查驗。"
-          }
-        }
-      ]
+  <style>
+    /* 隱藏滾動條但保留滑動功能 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
     }
-  ]
-};
-
-// ==========================================
-// 主應用程式 Component (App)
-// ==========================================
-export default function App() {
-  const [tripData, setTripData] = useState(DEFAULT_TRIP);
-  const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const [activeCategory, setActiveCategory] = useState('all'); // all, attraction, food, transport, hotel
-  const [selectedStoryItem, setSelectedStoryItem] = useState(null);
-  const [showClimateModal, setShowClimateModal] = useState(false);
-  const [showPlannerModal, setShowPlannerModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  // AI 規劃器表單狀態
-  const [plannerForm, setPlannerForm] = useState({
-    destination: "瑞士少女峰與策馬特",
-    daysCount: 6,
-    companion: "情侶 / 夫妻蜜月",
-    budget: "奢華高享受 (約 NT$ 100,000 / 人)",
-    stylePreference: "絕美自然風光、景觀鐵道自駕、私房起司鍋與米其林景觀餐廳"
-  });
-
-  const activeDay = tripData.days[activeDayIndex] || tripData.days[0];
-
-  // 彈出 Toast 訊息
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(""), 2800);
-  };
-
-  // Google Maps 一鍵導航
-  const handleNavigate = (item) => {
-    const query = item.navQuery || item.locationName;
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-    window.open(url, '_blank');
-    triggerToast(`🧭 正為您開啟【${item.title}】的 Google 導航！`);
-  };
-
-  // 複製預約代碼
-  const handleCopyCode = (code, e) => {
-    e.stopPropagation();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(code);
-    } else {
-      const textarea = document.createElement('textarea');
-      textarea.value = code;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
-    triggerToast(`📋 已成功複製預約代號：${code}`);
-  };
-
-  // 行程項目過濾
-  const filteredItems = useMemo(() => {
-    if (!activeDay || !activeDay.items) return [];
-    if (activeCategory === 'all') return activeDay.items;
-    return activeDay.items.filter(item => item.type === activeCategory);
-  }, [activeDay, activeCategory]);
-
-  // 天氣圖標渲染
-  const renderWeatherIcon = (iconType) => {
-    switch (iconType) {
-      case 'sunny':
-        return <SketchSun className="w-8 h-8 text-amber-500" />;
-      case 'rainy':
-        return <SketchRain className="w-8 h-8 text-blue-500" />;
-      case 'cloudy':
-      default:
-        return <SketchCloud className="w-8 h-8 text-slate-500" />;
+    /* 平滑觸控體驗 */
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
     }
-  };
+  </style>
+</head>
+<body class="bg-[#FAF7F2] text-[#2D3748]">
+  <div id="root"></div>
 
-  // ==========================================
-  // Gemini API 智能行程規劃調用 (支援指數退避重試)
-  // ==========================================
-  const handleGenerateAiTrip = async () => {
-    setIsGenerating(true);
-    const apiKey = ""; // Canvas 執行環境自動注入
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
 
-    const systemPrompt = `你是一位世界頂級的「旅行規劃專家」兼具深厚文化底蘊的「私房導遊」。
-請根據使用者的需求，以繁體中文 (台灣) 規劃一份極致精緻、手機閱讀友善的手繪風旅行手帳行程。
-你必須嚴格輸出合法的純 JSON 格式，不要包含任何 markdown 代碼塊外圍標記，也不要有額外雜訊。
+    // ==========================================
+    // 手繪風格圖標與插圖組件 (純 SVG 繪製)
+    // ==========================================
+    const SketchPin = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+        <circle cx="12" cy="9" r="2.5" fill="currentColor" fillOpacity="0.2" />
+        <path d="M8 9a4 4 0 0 1 8 0" strokeDasharray="1 2" />
+      </svg>
+    );
 
-JSON 結構規範：
-{
-  "destination": "目的地全名與主題標題",
-  "subtitle": "副標題 (富有詩意與吸引力)",
-  "daysCount": 數字,
-  "companion": "成員組成",
-  "budget": "預算等級",
-  "season": "推薦旅行季節與氣候特徵",
-  "geographyOverview": {
-    "topography": "詳細地形特徵 (如山地、峽谷、盆地、海濱)",
-    "climate": "氣候特點 (平均氣溫、降雨、濕度、溫差)",
-    "safetyHealth": "具體安全健康提醒 (如防滑、防高山症、防曬、醫藥準備)",
-    "packingSummary": "核心穿著指南與裝備建議"
-  },
-  "days": [
-    {
-      "day": 1,
-      "date": "第1天 (日期/星期)",
-      "title": "當日主題路線名稱",
-      "cityOrArea": "當日所在城市或區域",
-      "weather": {
-        "temp": "15°C ~ 22°C",
-        "condition": "氣候簡述",
-        "icon": "sunny 或 rainy 或 cloudy",
-        "humidity": "60%",
-        "clothingTip": "當日穿著指南",
-        "geographyNote": "當日小區域地理與風候提醒",
-        "safetyHealthTip": "當日自駕或步行安全建議"
+    const SketchCar = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 17h14M3 11l2-5h14l2 5M3 11v6a1 1 0 0 0 1 1h1m16-7v6a1 1 0 0 1-1 1h-1" />
+        <circle cx="7.5" cy="16.5" r="2.5" />
+        <circle cx="16.5" cy="16.5" r="2.5" />
+        <path d="M9 6l-1 5h8l-1-5" strokeDasharray="2 2" />
+      </svg>
+    );
+
+    const SketchFood = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
+        <line x1="6" y1="2" x2="6" y2="5" />
+        <line x1="10" y1="2" x2="10" y2="5" />
+        <line x1="14" y1="2" x2="14" y2="5" />
+      </svg>
+    );
+
+    const SketchAttraction = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" />
+        <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
+      </svg>
+    );
+
+    const SketchHotel = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7v14M21 7v14M3 12h18M7 12V9a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" />
+        <circle cx="9" cy="9" r="1" fill="currentColor" />
+      </svg>
+    );
+
+    const SketchSun = ({ className = "w-6 h-6 text-amber-500" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="4" fill="#FDE68A" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        <path d="M9 11a1 1 0 0 1 2 0M13 11a1 1 0 0 1 2 0M10 14c.7.5 1.3.5 2 0" />
+      </svg>
+    );
+
+    const SketchRain = ({ className = "w-6 h-6 text-blue-500" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.5 19H6a4 4 0 0 1-1.3-7.8A5 5 0 0 1 14.5 9a3.5 3.5 0 0 1 3 10z" fill="#DBEAFE" />
+        <path d="M8 21l-1 2M12 21l-1 2M16 21l-1 2" strokeDasharray="1 1" />
+      </svg>
+    );
+
+    const SketchCloud = ({ className = "w-6 h-6 text-slate-500" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.5 19H6a4 4 0 0 1-1.3-7.8A5 5 0 0 1 14.5 9a3.5 3.5 0 0 1 3 10z" fill="#F1F5F9" />
+      </svg>
+    );
+
+    const SketchBook = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        <path d="M8 7h8M8 11h6" strokeDasharray="1 1" />
+      </svg>
+    );
+
+    const SketchCompass = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="#F87171" fillOpacity="0.4" />
+      </svg>
+    );
+
+    const SketchSparkles = ({ className = "w-5 h-5" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" fill="#FBBF24" />
+        <path d="M19 17l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z" fill="#F59E0B" />
+      </svg>
+    );
+
+    const TapeEffect = ({ color = "bg-amber-100/80", className = "" }) => (
+      <div className={`h-4 w-16 -rotate-3 rounded-xs border-t border-b border-amber-300/40 shadow-xs backdrop-blur-xs ${color} ${className}`} />
+    );
+
+    // ==========================================
+    // 預設示範行程：京都宇治楓葉慢活自駕 5 日
+    // ==========================================
+    const DEFAULT_TRIP = {
+      destination: "日本・京都與宇治秘境自駕行",
+      subtitle: "秋季紅葉古寺、茶香與米其林私房料理探索",
+      daysCount: 5,
+      companion: "情侶 / 雙人自由行",
+      budget: "中高預算 (約 NT$ 45,000 / 人)",
+      season: "秋季 (11月中旬・紅葉季)",
+      geographyOverview: {
+        topography: "京都盆地地形，三面環山，宇治川流域濕度較高，山區與市區溫差顯著。",
+        climate: "秋高氣爽但日夜溫差高達 10~12°C，清晨及傍晚帶有清涼山風，偶有地形微雨。",
+        safetyHealth: "步道石階長青苔易滑，建議穿著抓地力佳健走鞋；隨身攜帶保溫瓶與潤喉糖。",
+        packingSummary: "洋蔥式穿法（發熱衣+羊毛開襟衫+防風外套）、防滑健行鞋、輕量折傘、保濕乳液。"
       },
-      "items": [
+      days: [
         {
-          "id": "d1-1",
-          "time": "09:00",
-          "type": "attraction 或 food 或 transport 或 hotel",
-          "title": "項目名稱",
-          "locationName": "真實地點名",
-          "navQuery": "精確導航搜尋關鍵字 (英文或當地語言便於Google Maps導航)",
-          "duration": "預估逗留時間",
-          "description": "精鍊吸引人的介紹 (約60字)",
-          "mustEat": ["必吃美食1", "必吃美食2"],
-          "mustOrder": ["必點菜單1", "必點菜單2"],
-          "mustBuy": ["必買伴手禮1", "必買伴手禮2"],
-          "bookingCode": "若有預約代號或通票 (如 SWISS-PASS-9921)",
-          "storyAndTips": {
-            "story": "導遊私房景點故事與歷史人文冷知識 (約100字)",
-            "culturalTip": "在地文化習俗、禮儀或避坑小撇步",
-            "photoSpot": "攝影愛好者絕景拍攝角度",
-            "selfDriveTip": "自駕停車或路線指引"
-          }
+          day: 1,
+          date: "2026-11-15 (週日)",
+          title: "嵐山古風自駕・竹林茶席與私房豆腐",
+          cityOrArea: "京都・嵐山 / 嵯峨野",
+          weather: {
+            temp: "11°C ~ 19°C",
+            condition: "晴時多雲 (舒服秋涼)",
+            icon: "sunny",
+            humidity: "58%",
+            clothingTip: "早晚穿防風長版大衣，午後散步單穿針織衫即可，建議搭配輕暖圍巾。",
+            geographyNote: "嵐山保津川沿岸風勢稍大，水氣充足，體感比市區低 2°C。",
+            safetyHealthTip: "嵯峨野小徑車輛少但路幅窄，自駕請減速禮讓步行遊客與人力車。"
+          },
+          items: [
+            {
+              id: "d1-1",
+              time: "09:30",
+              type: "attraction",
+              title: "嵐山渡月橋 & 天龍寺曹源池庭園",
+              locationName: "天龍寺 (Tenryu-ji)",
+              navQuery: "Tenryu-ji Temple Kyoto",
+              duration: "2.5 小時",
+              description: "名列世界文化遺產，漫步於曹源池借景嵐山的迴遊式庭園，秋天紅葉倒映池水如夢似幻。",
+              mustBuy: ["天龍寺限定結緣御守", "嵐山和紙香包"],
+              storyAndTips: {
+                story: "天龍寺由室町幕府初代將軍足利尊氏為撫慰後醍醐天皇亡靈而建，曹源池是日本現存最早的史跡特別名勝庭園。",
+                culturalTip: "進入方丈殿請脫鞋並輕聲細語，禁止在榻榻米上飲食或使用三腳架攝影。",
+                selfDriveTip: "天龍寺前專用停車場（¥1,000/次）上午10點前抵達通常有空位。"
+              }
+            },
+            {
+              id: "d1-2",
+              time: "12:15",
+              type: "food",
+              title: "嵯峨野 嵯峨豆腐稻 (北店)",
+              locationName: "嵯峨とうふ 稲 北店",
+              navQuery: "Saga Tofu Ine North Branch Kyoto",
+              duration: "1.5 小時",
+              description: "緊鄰竹林小徑入口，以京都純淨伏流水現磨手工湯葉（生豆皮）與胡麻豆腐聞名。",
+              mustEat: ["手作生湯葉御膳", "胡麻豆腐", "櫻花葛餅"],
+              mustOrder: ["嵐山特選御膳 (含炙燒白味噌豆皮)"],
+              bookingCode: "INE-RSV-8819",
+              storyAndTips: {
+                story: "京都傳統水質極為軟嫩清甜，造就數百年頂級豆腐工藝，古時僧侶修行的素食精進料理在此昇華為極致美食。",
+                culturalTip: "日本吃湯豆腐建議先品嚐原味甘甜，再沾少量特製高湯醬油與山葵。"
+              }
+            },
+            {
+              id: "d1-3",
+              time: "14:30",
+              type: "attraction",
+              title: "常寂光寺・幽靜紅葉階梯秘境",
+              locationName: "常寂光寺 (Jojakko-ji)",
+              navQuery: "Jojakko-ji Temple Kyoto",
+              duration: "2 小時",
+              description: "依小倉山而建的古剎，多寶塔四周被如火紅葉圍繞，可俯瞰整個京都盆地壯麗全景。",
+              mustBuy: ["小倉百人一首紀念木籤", "楓葉拓印明信片"],
+              storyAndTips: {
+                story: "此處相傳是平安時代歌人藤原定家編纂《小倉百人一首》的和歌故居遺址，充滿詩意文學靈魂。",
+                photoSpot: "仁王門通往本堂的茅草屋頂石階兩側，下午 3 點斜陽透過紅葉落光斑最美。"
+              }
+            },
+            {
+              id: "d1-4",
+              time: "17:30",
+              type: "transport",
+              title: "行經保津川觀景自駕道 往 嵐山溫泉旅宿",
+              locationName: "嵐山溫泉 花傳抄",
+              navQuery: "Kadensho Arashiyama Onsen Kyoto",
+              duration: "40 分鐘",
+              description: "沿著桂川景觀公路徐行，避開傍晚市區塞車，直接抵達日式天然溫泉會館。",
+              bookingCode: "HOTEL-KD-202611",
+              storyAndTips: {
+                selfDriveTip: "飯店附設免費住客立體停車場，導航設定後直接開至迎賓車道即可。"
+              }
+            }
+          ]
+        },
+        {
+          day: 2,
+          date: "2026-11-16 (週一)",
+          title: "金閣光影與大德寺茶道禪意之日",
+          cityOrArea: "京都・北野 / 鷹峯",
+          weather: {
+            temp: "10°C ~ 18°C",
+            condition: "晴朗微風",
+            icon: "sunny",
+            humidity: "52%",
+            clothingTip: "白天陽光溫煦，適合著薄長袖上衣加針織背心，傍晚加厚外套。",
+            geographyNote: "北區靠近比叡山山腳，空氣清新，午後地表降溫快。",
+            safetyHealthTip: "寺院多為天然木質階梯與石板路，請留意腳下防滑。"
+          },
+          items: [
+            {
+              id: "d2-1",
+              time: "09:00",
+              type: "attraction",
+              title: "鹿苑寺（金閣寺）晨光鏡湖池倒影",
+              locationName: "金閣寺 (Kinkaku-ji)",
+              navQuery: "Kinkaku-ji Temple Kyoto",
+              duration: "1.5 小時",
+              description: "三層樓閣貼滿純金箔，頂端立有象徵吉祥的金銅鳳凰，襯托楓紅與鏡湖池倒影震撼心靈。",
+              mustBuy: ["舍利殿御守護符（兼具門票功能）", "純金箔金平糖"],
+              storyAndTips: {
+                story: "由將軍足利義滿於1397年建造，巧妙結合公家寢殿造、武家住宅與禪宗佛堂三種截然不同的建築風格。",
+                photoSpot: "入口驗票後轉角的第一個鏡湖池觀景台，上午 9:00~10:30 順光拍攝金箔反光最耀眼。"
+              }
+            },
+            {
+              id: "d2-2",
+              time: "11:30",
+              type: "food",
+              title: "北野 一本鳥居 粟餅所 澤屋",
+              locationName: "粟餅所 澤屋 (Sawaya)",
+              navQuery: "Sawaya Awamochi Kyoto",
+              duration: "45 分鐘",
+              description: "創業於天正十五年（1587年）的400年老店，現點現做的小米麻糬，軟糯不甜膩。",
+              mustEat: ["現作紅豆泥粟餅", "特濃黃豆粉小米年糕"],
+              mustOrder: ["紅白粟餅雙拼抹茶套餐"],
+              storyAndTips: {
+                story: "豐臣秀吉在北野天滿宮舉辦北野大茶會時，相傳曾親口讚賞過澤屋的精湛粟餅手藝。",
+                culturalTip: "店內空間小巧，現做粟餅賞味期僅有半天，建議在店內新鮮享用。"
+              }
+            },
+            {
+              id: "d2-3",
+              time: "13:30",
+              type: "attraction",
+              title: "大德寺高桐院・竹林苔原與楓葉地毯",
+              locationName: "大德寺 高桐院 (Koto-in)",
+              navQuery: "Daitoku-ji Koto-in Kyoto",
+              duration: "2 小時",
+              description: "戰國名將兼茶道名家細川忠興建立的塔頭，石板參道兩側覆蓋厚實翠綠青苔與落楓。",
+              mustBuy: ["高桐院枯山水明信片", "大德寺一休納豆"],
+              storyAndTips: {
+                story: "千利休曾在大德寺修禪，院內的意北軒為千利休茶室遺構，散發深邃無比的『侘寂（Wabi-Sabi）』美學。",
+                culturalTip: "若有幸參與茶席體驗，右手持茶碗、左手托底，順時針旋轉兩次避開茶碗正面再飲用。"
+              }
+            },
+            {
+              id: "d2-4",
+              time: "18:00",
+              type: "food",
+              title: "祇園 炭火懷石 割烹 匠",
+              locationName: "祇園 割烹 肉匠 (Gion Takumi)",
+              navQuery: "Gion Kappo Kyoto",
+              duration: "2 小時",
+              description: "主打當令丹波松茸、炭火近江牛與京都黑七味燉煮海鮮的極致割烹晚宴。",
+              mustEat: ["炭火備長炭近江牛菲力", "丹波松茸土瓶蒸", "鮭魚卵釜飯"],
+              mustOrder: ["季節廚師無菜單懷石套餐 (Omakase)"],
+              bookingCode: "GION-OMK-7741",
+              storyAndTips: {
+                culturalTip: "高級割烹料理店請避免噴灑過於濃烈之香水，以利細細品嗅柴魚高湯與松茸之本味。"
+              }
+            }
+          ]
+        },
+        {
+          day: 3,
+          date: "2026-11-17 (週二)",
+          title: "宇治川漫步・世界遺產平等院與抹茶究極朝聖",
+          cityOrArea: "宇治市 (Uji)",
+          weather: {
+            temp: "12°C ~ 20°C",
+            condition: "早晨薄霧，午後艷陽",
+            icon: "sunny",
+            humidity: "65%",
+            clothingTip: "宇治川畔風涼，建議搭配防風薄外套，午後穿著棉質襯衫即可。",
+            geographyNote: "宇治川自琵琶湖流出，清晨河面常有浪漫晨霧，水氣充足盛產優質茶葉。",
+            safetyHealthTip: "宇治川中之島沙洲石子路多，建議穿著平底休閒鞋。"
+          },
+          items: [
+            {
+              id: "d3-1",
+              time: "09:30",
+              type: "attraction",
+              title: "平等院 鳳凰堂 & 鳳翔館博物館",
+              locationName: "平等院 鳳凰堂 (Byodoin Temple)",
+              navQuery: "Byodoin Temple Uji",
+              duration: "2.5 小時",
+              description: "日幣萬圓大鈔背面鳳凰與十圓硬幣上的國寶殿堂，阿字池畔呈現西方極樂淨土的具象化。",
+              mustBuy: ["平等院限定純銅鳳凰書籤", "極樂淨土梵鐘香"],
+              storyAndTips: {
+                story: "藤原賴通於1053年將父親藤原道長的別莊改建為佛寺，內部供奉高達2.8公尺的阿彌陀如來坐像及52尊雲中供養菩薩。",
+                photoSpot: "正面隔著阿字池，用 10 圓硬幣置於相機前前景對焦鳳凰堂，極具紀念趣味。"
+              }
+            },
+            {
+              id: "d3-2",
+              time: "12:30",
+              type: "food",
+              title: "中村藤吉 本店・宇治百年茶寮",
+              locationName: "中村藤吉 本店 (Nakamura Tokichi Main Store)",
+              navQuery: "Nakamura Tokichi Main Store Uji",
+              duration: "1.5 小時",
+              description: "創立於安政元年的茶商巨擘，在百年町家土藏造院落中品嚐以竹筒盛裝的手工抹茶生茶凍。",
+              mustEat: ["竹筒生茶凍（生ちゃぜりい）", "現磨抹茶冷麵蕎麥", "濃茶霜淇淋"],
+              mustOrder: ["季節限定 栗子蒙布朗抹茶芭菲"],
+              mustBuy: ["初昔 / 祥の昔 典藏抹茶粉", "抹茶千層派禮盒"],
+              bookingCode: "NAKA-WAIT-QR",
+              storyAndTips: {
+                story: "中村藤吉曾多次榮膺日本皇室御用茶銘柄，昔日茶商驗茶用的『黑室』至今仍完整保存於本店內。"
+              }
+            },
+            {
+              id: "d3-3",
+              time: "15:00",
+              type: "attraction",
+              title: "宇治神社 & 宇治上神社（日本最古老神社建築）",
+              locationName: "宇治上神社 (Ujigami Shrine)",
+              navQuery: "Ujigami Shrine Uji",
+              duration: "1.5 小時",
+              description: "隱身於朝日山山腳的日本最古老神社本殿，以獨特的『回頭兔（見返り兎）』指引良善之路由名。",
+              mustBuy: ["手繪彩色兔子神籤陶偶", "桐原水清酒繪馬"],
+              storyAndTips: {
+                story: "相傳莵道稚郎子王子迷路時，有一隻聰慧靈兔頻頻回頭指引方向，因此兔子在此被奉為指引幸福人生明路的使者。"
+              }
+            }
+          ]
+        },
+        {
+          day: 4,
+          date: "2026-11-18 (週三)",
+          title: "伏見千本鳥居・伏見酒藏與石牆小徑探秘",
+          cityOrArea: "京都・伏見 / 宇治川南岸",
+          weather: {
+            temp: "9°C ~ 17°C",
+            condition: "多雲時陰，傍晚清涼",
+            icon: "cloudy",
+            humidity: "60%",
+            clothingTip: "稻荷山健行路程較長，建議穿吸濕排汗內層，並備好輕便保暖外套防風。",
+            geographyNote: "稻荷山地勢多石階斜坡，林木茂密陰涼，自駕往返市區動線流暢。",
+            safetyHealthTip: "爬稻荷山請留意體力分配，中途設有多處茶屋可補充水分。"
+          },
+          items: [
+            {
+              id: "d4-1",
+              time: "08:30",
+              type: "attraction",
+              title: "伏見稻荷大社・清晨千本鳥居秘境巡禮",
+              locationName: "伏見稻荷大社 (Fushimi Inari Taisha)",
+              navQuery: "Fushimi Inari Taisha Kyoto",
+              duration: "2.5 小時",
+              description: "全日本三萬座稻荷神社總本宮，數以萬計的朱紅色鳥居如隧道般蜿蜒整座稻荷山。",
+              mustBuy: ["白狐造型祈願繪馬", "金運御守與開運狐狸鈴鐺"],
+              storyAndTips: {
+                story: "鳥居由信眾為祈求商賣繁盛或感謝心願達成而奉納，最古老的鳥居可追溯至江戶時期，朱紅顏料含丹砂能防腐驅邪。",
+                photoSpot: "清晨8:30前抵達『奧社奉拜所』前的雙分岔鳥居，最能拍出無人的神聖幽靜空景。"
+              }
+            },
+            {
+              id: "d4-2",
+              time: "12:00",
+              type: "food",
+              title: "伏見 十石舟河畔 鳥せい (Tori-sei 本店)",
+              locationName: "鳥せい 本店 (Torisei)",
+              navQuery: "Torisei Honten Fushimi",
+              duration: "1.5 小時",
+              description: "由近三百年清酒廠『神聖』改建而成，以酒廠名水『白菊水』烹製極品備長炭火燒鳥串燒。",
+              mustEat: ["原酒生清酒試飲", "炭火雞肉串燒拼盤", "特製酒粕拉麵"],
+              mustOrder: ["神聖酒造 藏出し原酒 (冰鎮現汲)"],
+              storyAndTips: {
+                story: "伏見地下擁有全日本最頂級的優質中硬度伏流水，古稱『伏水』，造就了安土桃山時代以來的清酒聖地傳奇。"
+              }
+            },
+            {
+              id: "d4-3",
+              time: "14:30",
+              type: "attraction",
+              title: "月桂冠大倉紀念館 & 伏見十石舟運河",
+              locationName: "月桂冠大倉紀念館 (Gekkeikan Okura Sake Museum)",
+              navQuery: "Gekkeikan Okura Sake Museum Fushimi",
+              duration: "2 小時",
+              description: "沿著柳樹搖曳的濠川運河漫步，探訪江戶時代白壁土藏釀酒庫房，親身品嚐清酒原酒。",
+              mustBuy: ["伏見限定大吟釀生原酒", "清酒酒粕面膜與酒粕香皂"],
+              storyAndTips: {
+                culturalTip: "自駕駕駛者請嚴格遵守『酒後絕不開車』，酒廠提供專屬無酒精甘酒與極品名水試飲。"
+              }
+            }
+          ]
+        },
+        {
+          day: 5,
+          date: "2026-11-19 (週四)",
+          title: "錦市場廚房尋味・清水寺舞台壓軸與伴手禮大採買",
+          cityOrArea: "京都・四條 / 東山",
+          weather: {
+            temp: "11°C ~ 19°C",
+            condition: "晴空萬里",
+            icon: "sunny",
+            humidity: "55%",
+            clothingTip: "舒適便服搭配好穿脫的球鞋，準備大容量折疊購物袋採買伴手禮。",
+            geographyNote: "東山清水坂為緩升斜坡石板街道，人潮熱絡。",
+            safetyHealthTip: "清水寺參道人潮眾多，自駕建議停放在五條坂公營地下停車場後步行。"
+          },
+          items: [
+            {
+              id: "d5-1",
+              time: "09:00",
+              type: "attraction",
+              title: "清水寺・清水舞台與音羽之瀧靈水",
+              locationName: "清水寺 (Kiyomizu-dera)",
+              navQuery: "Kiyomizu-dera Kyoto",
+              duration: "2.5 小時",
+              description: "完全未用一根鐵釘、由139根巨大櫸木架構懸空於崖壁上的國寶木造舞台，氣勢磅礡。",
+              mustBuy: ["清水寺頭痛平癒守", "產寧坂七味家本舖極上七味粉"],
+              storyAndTips: {
+                story: "日本俗諺『從清水舞台跳下（清水の舞台から飛び降りる）』比喻下定絕心破釜沉舟。音羽之瀧三道清泉分別代表健康、學業與良緣，僅能選一道飲用以保心誠則靈。",
+                photoSpot: "站在奧之院迴廊回望清水舞台與錦繡秋楓，是京都明信片上的經典取景角。"
+              }
+            },
+            {
+              id: "d5-2",
+              time: "12:00",
+              type: "food",
+              title: "京都的廚房：錦市場漫步老街",
+              locationName: "錦市場 (Nishiki Market)",
+              navQuery: "Nishiki Market Kyoto",
+              duration: "2 小時",
+              description: "擁有400年歷史的狹長商店街，聚集上百家販售京都醬菜、玉子燒、鮮海味與和菓子的老舖。",
+              mustEat: ["三木雞卵 高湯玉子燒", "田中雞肉 炸雞球", "櫂 KAI 章魚鵪鶉蛋"],
+              mustOrder: ["現烤生蠔配柚子胡椒", "豆乳甜甜圈"],
+              mustBuy: ["打田漬物 柴漬醬菜", "有次 鍛造手工京料理菜刀"],
+              storyAndTips: {
+                culturalTip: "為維持街道整潔與禮貌，錦市場現已禁止邊走邊吃，請在購買店家指定的專用立食區內享用完畢再離開。"
+              }
+            },
+            {
+              id: "d5-3",
+              time: "15:00",
+              type: "hotel",
+              title: "京都車站前取回行李・自駕還車與返回",
+              locationName: "京都站 Times Car Rental",
+              navQuery: "Times Car Rental Kyoto Station",
+              duration: "1 小時",
+              description: "抵達京都站完成加滿油還車檢查手續，於站內伴手禮街做最後採買後前往機場。",
+              bookingCode: "CAR-RET-09882",
+              storyAndTips: {
+                selfDriveTip: "還車前請於京都站周邊加油站加滿油（Regular 汽油），並保留加油發票供租車公司查驗。"
+              }
+            }
+          ]
         }
       ]
-    }
-  ]
-}`;
-
-    const userQuery = `請為我規劃【${plannerForm.destination}】的 ${plannerForm.daysCount} 天精彩旅程。
-同行成員：${plannerForm.companion}
-預算期望：${plannerForm.budget}
-風格與偏好：${plannerForm.stylePreference}
-請確保每一天都有豐富的景點(attraction)、美食(food)、交通(transport)安排，並提供精確的地點導航關鍵字、必吃美食、必點菜單、必買伴手禮與深刻的導遊文化典故。`;
-
-    const apiPayload = {
-      contents: [{ parts: [{ text: userQuery }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: {
-        responseMimeType: "application/json"
-      }
     };
 
-    const delays = [1000, 2000, 4000, 8000, 16000];
-    let success = false;
-    let resultJson = null;
+    // ==========================================
+    // 主應用程式 Component (App)
+    // ==========================================
+    function App() {
+      const [tripData, setTripData] = useState(DEFAULT_TRIP);
+      const [activeDayIndex, setActiveDayIndex] = useState(0);
+      const [activeCategory, setActiveCategory] = useState('all');
+      const [selectedStoryItem, setSelectedStoryItem] = useState(null);
+      const [showClimateModal, setShowClimateModal] = useState(false);
+      const [showPlannerModal, setShowPlannerModal] = useState(false);
+      const [toastMessage, setToastMessage] = useState("");
+      const [isGenerating, setIsGenerating] = useState(false);
+      const [apiKeyInput, setApiKeyInput] = useState("");
+      const [showKeyInput, setShowKeyInput] = useState(false);
 
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(apiPayload)
+      const [plannerForm, setPlannerForm] = useState({
+        destination: "瑞士少女峰與策馬特",
+        daysCount: 6,
+        companion: "情侶 / 夫妻蜜月",
+        budget: "奢華高享受 (約 NT$ 100,000 / 人)",
+        stylePreference: "絕美自然風光、景觀鐵道自駕、私房起司鍋與米其林景觀餐廳"
+      });
+
+      const activeDay = tripData.days[activeDayIndex] || tripData.days[0];
+
+      const triggerToast = (msg) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(""), 2800);
+      };
+
+      const handleNavigate = (item) => {
+        const query = item.navQuery || item.locationName;
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        window.open(url, '_blank');
+        triggerToast(`🧭 正為您開啟【${item.title}】的 Google 導航！`);
+      };
+
+      const handleCopyCode = (code, e) => {
+        e.stopPropagation();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = code;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+        triggerToast(`📋 已成功複製預約代號：${code}`);
+      };
+
+      const filteredItems = useMemo(() => {
+        if (!activeDay || !activeDay.items) return [];
+        if (activeCategory === 'all') return activeDay.items;
+        return activeDay.items.filter(item => item.type === activeCategory);
+      }, [activeDay, activeCategory]);
+
+      const renderWeatherIcon = (iconType) => {
+        switch (iconType) {
+          case 'sunny':
+            return <SketchSun className="w-8 h-8 text-amber-500" />;
+          case 'rainy':
+            return <SketchRain className="w-8 h-8 text-blue-500" />;
+          case 'cloudy':
+          default:
+            return <SketchCloud className="w-8 h-8 text-slate-500" />;
+        }
+      };
+
+      // AI 規劃調用 (Gemini API + 離線範本雙軌支援)
+      const handleGenerateAiTrip = async () => {
+        setIsGenerating(true);
+        const apiKey = apiKeyInput.trim();
+
+        // 離線智慧範本生成器 (當無 API Key 或連線失敗時提供流暢備援)
+        const getOfflineTemplate = () => {
+          const dest = plannerForm.destination || "瑞士阿爾卑斯山脈";
+          const days = [];
+          for (let i = 1; i <= plannerForm.daysCount; i++) {
+            days.push({
+              day: i,
+              date: `第 ${i} 天`,
+              title: `${dest}・第 ${i} 日精選探索`,
+              cityOrArea: `${dest}・核心風景區`,
+              weather: {
+                temp: "14°C ~ 22°C",
+                condition: "晴朗微風・舒適好天氣",
+                icon: "sunny",
+                humidity: "55%",
+                clothingTip: "洋蔥式多層穿搭，隨身攜帶防風保暖外套與遮陽帽。",
+                geographyNote: "地勢開闊，午後陽光充足，日夜溫差約 8°C。",
+                safetyHealthTip: "步行路段請著防滑健行鞋，自駕山區注意減速靠右慢行。"
+              },
+              items: [
+                {
+                  id: `gen-${i}-1`,
+                  time: "09:30",
+                  type: "attraction",
+                  title: `${dest} 地標絕景晨光巡禮`,
+                  locationName: `${dest} Main Landmark`,
+                  navQuery: `${dest} tourist attractions`,
+                  duration: "2.5 小時",
+                  description: `深入探訪${dest}最負盛名的代表景觀，感受大自然的壯麗鬼斧神工與悠久人文歷史底蘊。`,
+                  mustBuy: ["當地工藝限定紀念品", "手繪明信片套組"],
+                  storyAndTips: {
+                    story: `此處是${dest}最具象徵性的代表，融合悠久的自然風貌與在地傳奇歷史故事。`,
+                    culturalTip: "參觀時請保持安靜，依指示動線前行，拍照避免開啟閃光燈。",
+                    photoSpot: "入口處高台為全景最佳取景點，早晨順光拍攝最清澈。"
+                  }
+                },
+                {
+                  id: `gen-${i}-2`,
+                  time: "12:30",
+                  type: "food",
+                  title: `${dest} 景觀私房道地饗宴`,
+                  locationName: `${dest} Traditional Restaurant`,
+                  navQuery: `${dest} best local food restaurant`,
+                  duration: "1.5 小時",
+                  description: `品嚐當地主廚採集在地時令食材親自烹煮的特色經典料理，搭配在地特選飲品。`,
+                  mustEat: ["主廚手作經典主餐", "季節限定甜品"],
+                  mustOrder: ["在地招牌主廚套餐 (Chef Special)"],
+                  bookingCode: `RSV-${dest.slice(0, 3).toUpperCase()}-992${i}`,
+                  storyAndTips: {
+                    story: "傳承數十年的傳統烹調手藝，強調食材的原汁原味與細緻擺盤美學。",
+                    culturalTip: "若需結帳可於座位上示意服務人員，普遍接受信用卡或行動支付。"
+                  }
+                },
+                {
+                  id: `gen-${i}-3`,
+                  time: "15:00",
+                  type: "attraction",
+                  title: `${dest} 秘境小徑與文化漫步`,
+                  locationName: `${dest} Historic Old Town`,
+                  navQuery: `${dest} historic center`,
+                  duration: "2 小時",
+                  description: `漫步於充滿文化氣息的老街石板路，探訪文創小店與特色咖啡館，享受愜意午後。`,
+                  mustBuy: ["在地特產伴手禮", "純手工香氛工藝品"],
+                  storyAndTips: {
+                    story: "古老的巷弄見證了當地的黃金發展歲月，每一座建築都散發迷人的懷舊風情。",
+                    photoSpot: "巷弄轉角石階與復古街燈處，傍晚夕陽灑落時最具氛圍。"
+                  }
+                },
+                {
+                  id: `gen-${i}-4`,
+                  time: "18:00",
+                  type: "hotel",
+                  title: `${dest} 風格景觀特色旅宿`,
+                  locationName: `${dest} Boutique Resort & Hotel`,
+                  navQuery: `${dest} luxury hotel`,
+                  duration: "自駕約 30 分鐘",
+                  description: `入住視野遼闊的特色旅宿，在舒適靜謐的空間中洗滌一日疲憊，迎接明日精彩旅程。`,
+                  bookingCode: `HOTEL-STAY-${i}088`,
+                  storyAndTips: {
+                    selfDriveTip: "旅宿備有住客專屬免費停車場，直接沿指示車道開至大廳門口登記即可。"
+                  }
+                }
+              ]
+            });
           }
-        );
+          return {
+            destination: plannerForm.destination,
+            subtitle: `${plannerForm.companion}・${plannerForm.stylePreference.slice(0, 24)}...`,
+            daysCount: plannerForm.daysCount,
+            companion: plannerForm.companion,
+            budget: plannerForm.budget,
+            season: "四季皆宜・最佳推薦時程",
+            geographyOverview: {
+              topography: `${plannerForm.destination} 地貌豐富，景觀層次多樣，自然與人文交織。`,
+              climate: "氣候宜人舒適，午後偶有微風，早晚溫差約 6~10°C。",
+              safetyHealth: "隨身補充水分與防曬，建議準備常備胃腸藥及輕便健行鞋。",
+              packingSummary: "舒適洋蔥式衣物、輕量防風外套、折疊晴雨傘、行動電源。"
+            },
+            days: days
+          };
+        };
 
-        if (!response.ok) {
-          throw new Error(`HTTP Error: ${response.status}`);
+        if (!apiKey) {
+          // 無 API Key 時使用離線智慧範本快速生成
+          await new Promise(r => setTimeout(r, 1000));
+          const offlineTrip = getOfflineTemplate();
+          setTripData(offlineTrip);
+          setActiveDayIndex(0);
+          setActiveCategory('all');
+          setIsGenerating(false);
+          setShowPlannerModal(false);
+          triggerToast("✨ 已為您繪製客製行程！（輸入 API Key 可解鎖無上限真實 AI 規劃）");
+          return;
         }
 
-        const data = await response.json();
-        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (textResponse) {
-          resultJson = JSON.parse(textResponse);
-          success = true;
-          break;
+        // 有 API Key 時呼叫 Google Gemini API
+        const systemPrompt = `你是一位世界頂級的「旅行規劃專家」兼具深厚文化底蘊的「私房導遊」。
+請根據使用者的需求，以繁體中文 (台灣) 規劃一份極致精緻、手機閱讀友善的手繪風旅行手帳行程。
+你必須嚴格輸出合法的純 JSON 格式，不要包含任何 markdown 代碼塊外圍標記。`;
+
+        const userQuery = `請為我規劃【${plannerForm.destination}】的 ${plannerForm.daysCount} 天精彩旅程。
+同行成員：${plannerForm.companion}
+預算期望：${plannerForm.budget}
+風格與偏好：${plannerForm.stylePreference}`;
+
+        const apiPayload = {
+          contents: [{ parts: [{ text: userQuery }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { responseMimeType: "application/json" }
+        };
+
+        const delays = [1000, 2000, 4000, 8000, 16000];
+        let success = false;
+        let resultJson = null;
+
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            const response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(apiPayload)
+              }
+            );
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const data = await response.json();
+            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textResponse) {
+              resultJson = JSON.parse(textResponse);
+              success = true;
+              break;
+            }
+          } catch (err) {
+            if (attempt < 4) await new Promise(r => setTimeout(r, delays[attempt]));
+          }
         }
-      } catch (err) {
-        if (attempt < 4) {
-          await new Promise(r => setTimeout(r, delays[attempt]));
+
+        setIsGenerating(false);
+
+        if (success && resultJson && resultJson.days) {
+          setTripData(resultJson);
+          setActiveDayIndex(0);
+          setActiveCategory('all');
+          setShowPlannerModal(false);
+          triggerToast("✨ 哇！Gemini AI 已為您繪製完成極致專屬行程！");
+        } else {
+          // 呼叫失敗時平滑切換至智慧範本
+          const fallbackTrip = getOfflineTemplate();
+          setTripData(fallbackTrip);
+          setActiveDayIndex(0);
+          setActiveCategory('all');
+          setShowPlannerModal(false);
+          triggerToast("🔑 API Key 驗證未過或連線受限，已切換至離線智慧範本！");
         }
-      }
-    }
+      };
 
-    setIsGenerating(false);
+      return (
+        <div className="min-h-screen bg-[#FAF7F2] text-[#2D3748] font-sans antialiased selection:bg-amber-200 selection:text-amber-900 pb-24">
+          <div className="fixed inset-0 pointer-events-none opacity-40 bg-[radial-gradient(#E2D9C8_1px,transparent_1px)] [background-size:16px_16px] z-0" />
 
-    if (success && resultJson && resultJson.days) {
-      setTripData(resultJson);
-      setActiveDayIndex(0);
-      setActiveCategory('all');
-      setShowPlannerModal(false);
-      triggerToast("✨ 哇！為您量身訂製的專屬手繪旅行計畫已生成完畢！");
-    } else {
-      triggerToast("⚠️ 連線稍微繁忙，已為您保留現有行程，請稍後再試！");
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#2D3748] font-sans antialiased selection:bg-amber-200 selection:text-amber-900 pb-24">
-      {/* 頂部手繪裝飾紋理背景 (模擬手帳紙與淡淡水彩質感) */}
-      <div className="fixed inset-0 pointer-events-none opacity-40 bg-[radial-gradient(#E2D9C8_1px,transparent_1px)] [background-size:16px_16px] z-0" />
-
-      {/* 手機主視窗容器 (寬度限制在 mobile 規格，桌機下優雅居中) */}
-      <div className="relative z-10 max-w-md mx-auto min-h-screen bg-[#FCFAF6] shadow-2xl border-x border-[#E9E2D5] flex flex-col">
-
-        {/* 頂部 Header 導航列 */}
-        <header className="sticky top-0 z-30 bg-[#FCFAF6]/95 backdrop-blur-md border-b border-[#EADFCB] px-4 pt-4 pb-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-dashed border-amber-600 flex items-center justify-center text-amber-800 shadow-xs">
-                <SketchCompass className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold tracking-wider text-amber-700 uppercase bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200/60">
-                    隨身手帳
-                  </span>
-                  <span className="text-[11px] text-stone-500 font-medium">{tripData.companion}</span>
-                </div>
-                <h1 className="text-base font-extrabold text-[#231F20] tracking-tight leading-snug line-clamp-1">
-                  {tripData.destination}
-                </h1>
-              </div>
-            </div>
-
-            {/* AI 重新客製規劃按鈕 */}
-            <button
-              onClick={() => setShowPlannerModal(true)}
-              className="group flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-all"
-            >
-              <SketchSparkles className="w-3.5 h-3.5 animate-spin text-amber-200" style={{ animationDuration: '8s' }} />
-              <span>AI 客製</span>
-            </button>
-          </div>
-
-          {/* 地理特徵與氣候概覽展開按鈕 */}
-          <div className="mt-2.5 flex items-center justify-between text-xs bg-amber-50/80 border border-amber-200/80 rounded-xl px-3 py-2">
-            <div className="flex items-center space-x-2 truncate">
-              <span className="text-base">🍁</span>
-              <span className="text-stone-700 font-medium truncate">
-                {tripData.season}・{tripData.geographyOverview?.topography || "地理氣候已就緒"}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowClimateModal(true)}
-              className="text-xs font-bold text-amber-800 underline decoration-amber-400 decoration-wavy underline-offset-2 shrink-0 ml-1 flex items-center"
-            >
-              地理穿著詳情 →
-            </button>
-          </div>
-
-          {/* 天數水平滑動分頁籤 (Day 1 ~ Day N) */}
-          <div className="flex space-x-2 overflow-x-auto no-scrollbar pt-3 pb-1 -mx-4 px-4 scroll-smooth">
-            {tripData.days.map((d, index) => {
-              const isSelected = index === activeDayIndex;
-              return (
-                <button
-                  key={d.day}
-                  onClick={() => {
-                    setActiveDayIndex(index);
-                    setActiveCategory('all');
-                  }}
-                  className={`relative shrink-0 px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex flex-col items-center min-w-[62px] border ${
-                    isSelected
-                      ? 'bg-[#2D3748] text-[#FAF7F2] border-[#2D3748] shadow-md -translate-y-0.5'
-                      : 'bg-white/80 text-stone-600 border-[#E2D7C5] hover:bg-amber-50/50'
-                  }`}
-                >
-                  {isSelected && (
-                    <div className="absolute -top-1.5 left-1/2 -translate-x-1/2">
-                      <TapeEffect color="bg-amber-300" className="w-6 h-2 -rotate-2" />
-                    </div>
-                  )}
-                  <span className="text-[10px] opacity-80 uppercase">Day {d.day}</span>
-                  <span className="text-xs font-black">{d.cityOrArea?.split('・')[1] || d.cityOrArea || `第 ${d.day} 天`}</span>
-                </button>
-              );
-            })}
-          </div>
-        </header>
-
-        {/* 核心內容滾動區 */}
-        <main className="flex-1 px-4 pt-3 space-y-4">
-
-          {/* ===== 每日即時天氣與穿著橫幅卡片 ===== */}
-          <div className="relative bg-gradient-to-br from-amber-50/90 via-orange-50/70 to-stone-50 border-2 border-[#E5DAC6] rounded-2xl p-3.5 shadow-sm overflow-hidden">
-            {/* 可愛手繪紙膠帶角標 */}
-            <div className="absolute -top-2 -right-3 rotate-12">
-              <TapeEffect color="bg-rose-200/90" className="w-16 h-3" />
-            </div>
-
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center space-x-1.5 text-xs text-stone-500 font-semibold">
-                  <span className="px-2 py-0.5 bg-white rounded-full border border-stone-200 text-stone-700 shadow-2xs">
-                    📅 {activeDay.date}
-                  </span>
-                  <span>{activeDay.cityOrArea}</span>
-                </div>
-                <h2 className="text-base font-extrabold text-[#2D3748] mt-1 flex items-center gap-1.5">
-                  <span>Day {activeDay.day}：{activeDay.title}</span>
-                </h2>
-              </div>
-              <div className="flex flex-col items-end shrink-0 pl-2">
-                <div className="p-1.5 bg-white/90 rounded-2xl border border-amber-200/80 shadow-xs">
-                  {renderWeatherIcon(activeDay.weather?.icon)}
-                </div>
-                <span className="text-xs font-black text-amber-900 mt-1">
-                  {activeDay.weather?.temp}
-                </span>
-              </div>
-            </div>
-
-            {/* 即時氣候與穿著建議條 */}
-            <div className="mt-3 pt-2.5 border-t border-dashed border-amber-200/90 grid grid-cols-1 gap-1.5 text-xs">
-              <div className="flex items-start gap-1.5 text-stone-700 bg-white/70 p-2 rounded-xl border border-amber-100">
-                <span className="text-amber-700 shrink-0 text-sm">🧥</span>
-                <div>
-                  <span className="font-bold text-amber-950">今日穿搭指南：</span>
-                  <span className="text-stone-600">{activeDay.weather?.clothingTip}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-stone-500 px-1">
-                <span>💧 濕度：<strong className="text-stone-700">{activeDay.weather?.humidity}</strong> ({activeDay.weather?.condition})</span>
-                <span className="truncate max-w-[200px]">📍 {activeDay.weather?.geographyNote}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 行程分類過濾膠囊 Pills */}
-          <div className="flex items-center justify-between pb-0.5">
-            <span className="text-xs font-bold text-stone-500 flex items-center gap-1">
-              <SketchPin className="w-3.5 h-3.5 text-amber-700" />
-              <span>當日行程清單 ({filteredItems.length})</span>
-            </span>
-
-            <div className="flex space-x-1 bg-stone-200/60 p-0.5 rounded-xl text-[11px] font-bold">
-              {[
-                { id: 'all', label: '全部' },
-                { id: 'attraction', label: '景點' },
-                { id: 'food', label: '美食' },
-                { id: 'transport', label: '交通/宿' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveCategory(tab.id)}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    activeCategory === tab.id
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ===== 行程項目卡片清單 ===== */}
-          <div className="space-y-3.5">
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-10 bg-white/60 rounded-2xl border-2 border-dashed border-stone-200 p-6">
-                <div className="text-3xl mb-2">🌿</div>
-                <p className="text-xs text-stone-500 font-medium">該分類下目前無行程，請點選「全部」查看完整安排。</p>
-              </div>
-            ) : (
-              filteredItems.map((item, idx) => (
-                <ItineraryCard
-                  key={item.id || idx}
-                  item={item}
-                  onNavigate={() => handleNavigate(item)}
-                  onOpenStory={() => setSelectedStoryItem(item)}
-                  onCopyCode={(code, e) => handleCopyCode(code, e)}
-                />
-              ))
-            )}
-          </div>
-
-          {/* 每日結尾：導遊安全叮嚀 */}
-          {activeDay.weather?.safetyHealthTip && (
-            <div className="bg-emerald-50/80 border-2 border-dashed border-emerald-300/80 rounded-2xl p-3 text-xs text-emerald-900 flex items-start gap-2 shadow-2xs">
-              <span className="text-base shrink-0">💡</span>
-              <div>
-                <span className="font-bold">導遊小叮嚀：</span>
-                <span className="text-emerald-800">{activeDay.weather.safetyHealthTip}</span>
-              </div>
-            </div>
-          )}
-        </main>
-
-        {/* 底部導航欄與快速操作 */}
-        <footer className="sticky bottom-0 z-30 bg-[#FCFAF6]/95 backdrop-blur-md border-t border-[#EADFCB] px-4 py-2.5 flex items-center justify-around shadow-lg">
-          <button
-            onClick={() => {
-              if (activeDayIndex > 0) setActiveDayIndex(activeDayIndex - 1);
-            }}
-            disabled={activeDayIndex === 0}
-            className={`flex flex-col items-center text-[11px] font-bold ${
-              activeDayIndex === 0 ? 'text-stone-300' : 'text-stone-700 active:scale-90'
-            }`}
-          >
-            <span className="text-base">◀</span>
-            <span>上一天</span>
-          </button>
-
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            <span className="text-xs font-black text-stone-800">
-              Day {activeDay.day} / {tripData.days.length}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-          </div>
-
-          <button
-            onClick={() => {
-              if (activeDayIndex < tripData.days.length - 1) setActiveDayIndex(activeDayIndex + 1);
-            }}
-            disabled={activeDayIndex === tripData.days.length - 1}
-            className={`flex flex-col items-center text-[11px] font-bold ${
-              activeDayIndex === tripData.days.length - 1 ? 'text-stone-300' : 'text-stone-700 active:scale-90'
-            }`}
-          >
-            <span className="text-base">▶</span>
-            <span>下一天</span>
-          </button>
-        </footer>
-      </div>
-
-      {/* ==========================================
-          彈出視窗 1：景點故事與深度攻略 Drawer
-      ========================================== */}
-      {selectedStoryItem && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#FAF7F2] w-full max-w-md rounded-t-3xl sm:rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[85vh] overflow-y-auto space-y-4">
+          <div className="relative z-10 max-w-md mx-auto min-h-screen bg-[#FCFAF6] shadow-2xl border-x border-[#E9E2D5] flex flex-col">
             
-            {/* 抽屜頂部手柄與標題 */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-800">
-                  <SketchBook className="w-4 h-4" />
+            {/* 頂部 Header */}
+            <header className="sticky top-0 z-30 bg-[#FCFAF6]/95 backdrop-blur-md border-b border-[#EADFCB] px-4 pt-4 pb-3 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 border-2 border-dashed border-amber-600 flex items-center justify-center text-amber-800 shadow-xs">
+                    <SketchCompass className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold tracking-wider text-amber-700 uppercase bg-amber-50 px-1.5 py-0.5 rounded-sm border border-amber-200/60">
+                        隨身手帳
+                      </span>
+                      <span className="text-[11px] text-stone-500 font-medium">{tripData.companion}</span>
+                    </div>
+                    <h1 className="text-base font-extrabold text-[#231F20] tracking-tight leading-snug line-clamp-1">
+                      {tripData.destination}
+                    </h1>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest bg-amber-100/60 px-1.5 py-0.5 rounded-sm">
-                    導遊深度私房話
+
+                <button
+                  onClick={() => setShowPlannerModal(true)}
+                  className="group flex items-center space-x-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-full shadow-md active:scale-95 transition-all"
+                >
+                  <SketchSparkles className="w-3.5 h-3.5 animate-spin text-amber-200" style={{ animationDuration: '8s' }} />
+                  <span>AI 客製</span>
+                </button>
+              </div>
+
+              {/* 地理特徵與氣候概覽條 */}
+              <div className="mt-2.5 flex items-center justify-between text-xs bg-amber-50/80 border border-amber-200/80 rounded-xl px-3 py-2">
+                <div className="flex items-center space-x-2 truncate">
+                  <span className="text-base">🍁</span>
+                  <span className="text-stone-700 font-medium truncate">
+                    {tripData.season}・{tripData.geographyOverview?.topography || "地理氣候已就緒"}
                   </span>
-                  <h3 className="text-base font-extrabold text-stone-900 leading-tight">
-                    {selectedStoryItem.title}
-                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowClimateModal(true)}
+                  className="text-xs font-bold text-amber-800 underline decoration-amber-400 decoration-wavy underline-offset-2 shrink-0 ml-1"
+                >
+                  地理穿著詳情 →
+                </button>
+              </div>
+
+              {/* 天數滑動分頁籤 */}
+              <div className="flex space-x-2 overflow-x-auto no-scrollbar pt-3 pb-1 -mx-4 px-4 scroll-smooth">
+                {tripData.days.map((d, index) => {
+                  const isSelected = index === activeDayIndex;
+                  return (
+                    <button
+                      key={d.day}
+                      onClick={() => {
+                        setActiveDayIndex(index);
+                        setActiveCategory('all');
+                      }}
+                      className={`relative shrink-0 px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex flex-col items-center min-w-[62px] border ${
+                        isSelected
+                          ? 'bg-[#2D3748] text-[#FAF7F2] border-[#2D3748] shadow-md -translate-y-0.5'
+                          : 'bg-white/80 text-stone-600 border-[#E2D7C5] hover:bg-amber-50/50'
+                      }`}
+                    >
+                      {isSelected && (
+                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2">
+                          <TapeEffect color="bg-amber-300" className="w-6 h-2 -rotate-2" />
+                        </div>
+                      )}
+                      <span className="text-[10px] opacity-80 uppercase">Day {d.day}</span>
+                      <span className="text-xs font-black">{d.cityOrArea?.split('・')[1] || d.cityOrArea || `第 ${d.day} 天`}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </header>
+
+            {/* 核心內容區 */}
+            <main className="flex-1 px-4 pt-3 space-y-4">
+              {/* 每日即時天氣與穿著橫幅卡片 */}
+              <div className="relative bg-gradient-to-br from-amber-50/90 via-orange-50/70 to-stone-50 border-2 border-[#E5DAC6] rounded-2xl p-3.5 shadow-sm overflow-hidden">
+                <div className="absolute -top-2 -right-3 rotate-12">
+                  <TapeEffect color="bg-rose-200/90" className="w-16 h-3" />
+                </div>
+
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center space-x-1.5 text-xs text-stone-500 font-semibold">
+                      <span className="px-2 py-0.5 bg-white rounded-full border border-stone-200 text-stone-700 shadow-2xs">
+                        📅 {activeDay.date}
+                      </span>
+                      <span>{activeDay.cityOrArea}</span>
+                    </div>
+                    <h2 className="text-base font-extrabold text-[#2D3748] mt-1 flex items-center gap-1.5">
+                      <span>Day {activeDay.day}：{activeDay.title}</span>
+                    </h2>
+                  </div>
+                  <div className="flex flex-col items-end shrink-0 pl-2">
+                    <div className="p-1.5 bg-white/90 rounded-2xl border border-amber-200/80 shadow-xs">
+                      {renderWeatherIcon(activeDay.weather?.icon)}
+                    </div>
+                    <span className="text-xs font-black text-amber-900 mt-1">
+                      {activeDay.weather?.temp}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-dashed border-amber-200/90 grid grid-cols-1 gap-1.5 text-xs">
+                  <div className="flex items-start gap-1.5 text-stone-700 bg-white/70 p-2 rounded-xl border border-amber-100">
+                    <span className="text-amber-700 shrink-0 text-sm">🧥</span>
+                    <div>
+                      <span className="font-bold text-amber-950">今日穿搭指南：</span>
+                      <span className="text-stone-600">{activeDay.weather?.clothingTip}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 px-1">
+                    <span>💧 濕度：<strong className="text-stone-700">{activeDay.weather?.humidity}</strong> ({activeDay.weather?.condition})</span>
+                    <span className="truncate max-w-[200px]">📍 {activeDay.weather?.geographyNote}</span>
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedStoryItem(null)}
-                className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* 景點傳奇與歷史故事 */}
-            {selectedStoryItem.storyAndTips?.story && (
-              <div className="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-2xl">
-                <h4 className="text-xs font-black text-amber-900 flex items-center gap-1.5 mb-1.5">
-                  <span>📜</span>
-                  <span>景點人文典故與歷史傳奇</span>
-                </h4>
-                <p className="text-xs text-stone-700 leading-relaxed font-serif">
-                  {selectedStoryItem.storyAndTips.story}
-                </p>
+              {/* 分類按鈕 */}
+              <div className="flex items-center justify-between pb-0.5">
+                <span className="text-xs font-bold text-stone-500 flex items-center gap-1">
+                  <SketchPin className="w-3.5 h-3.5 text-amber-700" />
+                  <span>當日行程清單 ({filteredItems.length})</span>
+                </span>
+
+                <div className="flex space-x-1 bg-stone-200/60 p-0.5 rounded-xl text-[11px] font-bold">
+                  {[
+                    { id: 'all', label: '全部' },
+                    { id: 'attraction', label: '景點' },
+                    { id: 'food', label: '美食' },
+                    { id: 'transport', label: '交通/宿' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveCategory(tab.id)}
+                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                        activeCategory === tab.id
+                          ? 'bg-white text-stone-900 shadow-2xs'
+                          : 'text-stone-500 hover:text-stone-800'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
 
-            {/* 文化習俗與避坑攻略 */}
-            {selectedStoryItem.storyAndTips?.culturalTip && (
-              <div className="bg-rose-50/80 border border-rose-200/80 p-3.5 rounded-2xl">
-                <h4 className="text-xs font-black text-rose-900 flex items-center gap-1.5 mb-1.5">
-                  <span>🏮</span>
-                  <span>在地文化禮儀與參拜/用餐小撇步</span>
-                </h4>
-                <p className="text-xs text-rose-950 leading-relaxed">
-                  {selectedStoryItem.storyAndTips.culturalTip}
-                </p>
+              {/* 行程項目列表 */}
+              <div className="space-y-3.5">
+                {filteredItems.length === 0 ? (
+                  <div className="text-center py-10 bg-white/60 rounded-2xl border-2 border-dashed border-stone-200 p-6">
+                    <div className="text-3xl mb-2">🌿</div>
+                    <p className="text-xs text-stone-500 font-medium">該分類下目前無行程，請點選「全部」查看完整安排。</p>
+                  </div>
+                ) : (
+                  filteredItems.map((item, idx) => (
+                    <ItineraryCard
+                      key={item.id || idx}
+                      item={item}
+                      onNavigate={() => handleNavigate(item)}
+                      onOpenStory={() => setSelectedStoryItem(item)}
+                      onCopyCode={(code, e) => handleCopyCode(code, e)}
+                    />
+                  ))
+                )}
               </div>
-            )}
 
-            {/* 攝影取景絕位 */}
-            {selectedStoryItem.storyAndTips?.photoSpot && (
-              <div className="bg-sky-50/80 border border-sky-200/80 p-3.5 rounded-2xl">
-                <h4 className="text-xs font-black text-sky-900 flex items-center gap-1.5 mb-1.5">
-                  <span>📸</span>
-                  <span>明信片級拍照取景密技</span>
-                </h4>
-                <p className="text-xs text-sky-950 leading-relaxed">
-                  {selectedStoryItem.storyAndTips.photoSpot}
-                </p>
-              </div>
-            )}
+              {activeDay.weather?.safetyHealthTip && (
+                <div className="bg-emerald-50/80 border-2 border-dashed border-emerald-300/80 rounded-2xl p-3 text-xs text-emerald-900 flex items-start gap-2 shadow-2xs">
+                  <span className="text-base shrink-0">💡</span>
+                  <div>
+                    <span className="font-bold">導遊小叮嚀：</span>
+                    <span className="text-emerald-800">{activeDay.weather.safetyHealthTip}</span>
+                  </div>
+                </div>
+              )}
+            </main>
 
-            {/* 自駕與停車建議 */}
-            {selectedStoryItem.storyAndTips?.selfDriveTip && (
-              <div className="bg-purple-50/80 border border-purple-200/80 p-3.5 rounded-2xl">
-                <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5 mb-1.5">
-                  <span>🚗</span>
-                  <span>自駕停車與路線指引</span>
-                </h4>
-                <p className="text-xs text-purple-950 leading-relaxed">
-                  {selectedStoryItem.storyAndTips.selfDriveTip}
-                </p>
-              </div>
-            )}
-
-            {/* 底部按鈕 */}
-            <div className="pt-2 flex gap-2">
+            {/* 底部導航欄 */}
+            <footer className="sticky bottom-0 z-30 bg-[#FCFAF6]/95 backdrop-blur-md border-t border-[#EADFCB] px-4 py-2.5 flex items-center justify-around shadow-lg">
               <button
                 onClick={() => {
-                  handleNavigate(selectedStoryItem);
-                  setSelectedStoryItem(null);
+                  if (activeDayIndex > 0) setActiveDayIndex(activeDayIndex - 1);
                 }}
-                className="flex-1 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-xs font-extrabold rounded-2xl shadow-md flex items-center justify-center gap-1.5 active:scale-98"
-              >
-                <SketchPin className="w-4 h-4" />
-                <span>立即開啟 Google 導航</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ==========================================
-          彈出視窗 2：地理特徵、氣候與裝備清單 Modal
-      ========================================== */}
-      {showClimateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[85vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800">
-                  <span className="text-base">🏔️</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                    環境準備度分析
-                  </span>
-                  <h3 className="text-base font-extrabold text-stone-900">
-                    目的地地理與氣候特徵
-                  </h3>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowClimateModal(false)}
-                className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 地形分析 */}
-            <div className="p-3.5 bg-white rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
-              <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
-                <span>🗺️</span> 地形地貌特徵
-              </span>
-              <p className="text-xs text-stone-700 leading-relaxed">
-                {tripData.geographyOverview?.topography}
-              </p>
-            </div>
-
-            {/* 氣候特點 */}
-            <div className="p-3.5 bg-white rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
-              <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
-                <span>🌡️</span> 季節氣候與日夜溫差
-              </span>
-              <p className="text-xs text-stone-700 leading-relaxed">
-                {tripData.geographyOverview?.climate}
-              </p>
-            </div>
-
-            {/* 裝備與穿著指南 */}
-            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/90 shadow-2xs space-y-1">
-              <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                <span>🎒</span> 推薦打包清單與穿搭
-              </span>
-              <p className="text-xs text-amber-900 leading-relaxed font-medium">
-                {tripData.geographyOverview?.packingSummary}
-              </p>
-            </div>
-
-            {/* 安全與健康提醒 */}
-            <div className="p-3.5 bg-rose-50 rounded-2xl border border-rose-200/90 shadow-2xs space-y-1">
-              <span className="text-xs font-black text-rose-950 flex items-center gap-1.5">
-                <span>❤️</span> 安全防護與健康常備藥
-              </span>
-              <p className="text-xs text-rose-900 leading-relaxed">
-                {tripData.geographyOverview?.safetyHealth}
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowClimateModal(false)}
-              className="w-full py-2.5 bg-stone-800 text-[#FAF7F2] text-xs font-extrabold rounded-2xl shadow-md"
-            >
-              已充分瞭解，回到行程
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ==========================================
-          彈出視窗 3：AI 智能行程自訂專家 (Gemini 2.5 API)
-      ========================================== */}
-      {showPlannerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-xs">
-                  <SketchSparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest">
-                    旅行規劃專家 AI
-                  </span>
-                  <h3 className="text-base font-extrabold text-stone-900">
-                    為您客製全球手繪行程
-                  </h3>
-                </div>
-              </div>
-              <button
-                disabled={isGenerating}
-                onClick={() => setShowPlannerModal(false)}
-                className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {/* 目的地輸入 */}
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">
-                  📍 心儀目的地 (城市 / 國家 / 主題)
-                </label>
-                <input
-                  type="text"
-                  value={plannerForm.destination}
-                  onChange={(e) => setPlannerForm({ ...plannerForm, destination: e.target.value })}
-                  placeholder="例如：日本北海道富良野自駕、冰島環島、泰國清邁慢活..."
-                  className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                />
-              </div>
-
-              {/* 天數與同行成員 */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-bold text-stone-700 block mb-1">
-                    📅 旅行天數
-                  </label>
-                  <select
-                    value={plannerForm.daysCount}
-                    onChange={(e) => setPlannerForm({ ...plannerForm, daysCount: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7].map(n => (
-                      <option key={n} value={n}>{n} 天</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-stone-700 block mb-1">
-                    👥 成員組成
-                  </label>
-                  <select
-                    value={plannerForm.companion}
-                    onChange={(e) => setPlannerForm({ ...plannerForm, companion: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                  >
-                    <option value="情侶 / 夫妻蜜月">甜蜜情侶 / 夫妻</option>
-                    <option value="家庭親子 (含長輩或兒童)">溫馨家庭親子遊</option>
-                    <option value="三五好友自駕團">三五好友熱血自駕</option>
-                    <option value="獨自背包客冒險">獨行背包客探險</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 預算範圍 */}
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">
-                  💰 預算期待
-                </label>
-                <select
-                  value={plannerForm.budget}
-                  onChange={(e) => setPlannerForm({ ...plannerForm, budget: e.target.value })}
-                  className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                >
-                  <option value="親民小資高CP值 (約 NT$ 25,000 / 人)">經濟小資高CP值</option>
-                  <option value="精緻舒適中高預算 (約 NT$ 45,000 / 人)">精緻舒適無負擔</option>
-                  <option value="頂級奢華享受 (約 NT$ 80,000+ / 人)">頂級奢華美饌住宿</option>
-                </select>
-              </div>
-
-              {/* 偏好與風格 */}
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">
-                  🎨 旅行風格與特殊要求
-                </label>
-                <textarea
-                  rows={2}
-                  value={plannerForm.stylePreference}
-                  onChange={(e) => setPlannerForm({ ...plannerForm, stylePreference: e.target.value })}
-                  placeholder="例如：喜歡米其林私房料理、不要太趕、要有特色伴手禮與美麗日落..."
-                  className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* 生成按鈕 */}
-            <div className="pt-2">
-              <button
-                disabled={isGenerating}
-                onClick={handleGenerateAiTrip}
-                className={`w-full py-3 rounded-2xl font-extrabold text-xs text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-                  isGenerating
-                    ? 'bg-stone-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:opacity-95 active:scale-98'
+                disabled={activeDayIndex === 0}
+                className={`flex flex-col items-center text-[11px] font-bold ${
+                  activeDayIndex === 0 ? 'text-stone-300' : 'text-stone-700 active:scale-90'
                 }`}
               >
-                {isGenerating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>專家正繪製專屬手帳中，請稍候...</span>
-                  </>
-                ) : (
-                  <>
-                    <SketchSparkles className="w-4 h-4 text-amber-200" />
-                    <span>開始繪製專屬手繪行程 (AI 生成)</span>
-                  </>
+                <span className="text-base">◀</span>
+                <span>上一天</span>
+              </button>
+
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span className="text-xs font-black text-stone-800">
+                  Day {activeDay.day} / {tripData.days.length}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (activeDayIndex < tripData.days.length - 1) setActiveDayIndex(activeDayIndex + 1);
+                }}
+                disabled={activeDayIndex === tripData.days.length - 1}
+                className={`flex flex-col items-center text-[11px] font-bold ${
+                  activeDayIndex === tripData.days.length - 1 ? 'text-stone-300' : 'text-stone-700 active:scale-90'
+                }`}
+              >
+                <span className="text-base">▶</span>
+                <span>下一天</span>
+              </button>
+            </footer>
+          </div>
+
+          {/* 彈出視窗 1：景點故事 Drawer */}
+          {selectedStoryItem && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs">
+              <div className="bg-[#FAF7F2] w-full max-w-md rounded-t-3xl sm:rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[85vh] overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-800">
+                      <SketchBook className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest bg-amber-100/60 px-1.5 py-0.5 rounded-sm">
+                        導遊深度私房話
+                      </span>
+                      <h3 className="text-base font-extrabold text-stone-900 leading-tight">
+                        {selectedStoryItem.title}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedStoryItem(null)}
+                    className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {selectedStoryItem.storyAndTips?.story && (
+                  <div className="bg-amber-50/80 border border-amber-200/80 p-3.5 rounded-2xl">
+                    <h4 className="text-xs font-black text-amber-900 flex items-center gap-1.5 mb-1.5">
+                      <span>📜</span>
+                      <span>景點人文典故與歷史傳奇</span>
+                    </h4>
+                    <p className="text-xs text-stone-700 leading-relaxed font-serif">
+                      {selectedStoryItem.storyAndTips.story}
+                    </p>
+                  </div>
                 )}
+
+                {selectedStoryItem.storyAndTips?.culturalTip && (
+                  <div className="bg-rose-50/80 border border-rose-200/80 p-3.5 rounded-2xl">
+                    <h4 className="text-xs font-black text-rose-900 flex items-center gap-1.5 mb-1.5">
+                      <span>🏮</span>
+                      <span>在地文化禮儀與參拜/用餐小撇步</span>
+                    </h4>
+                    <p className="text-xs text-rose-950 leading-relaxed">
+                      {selectedStoryItem.storyAndTips.culturalTip}
+                    </p>
+                  </div>
+                )}
+
+                {selectedStoryItem.storyAndTips?.photoSpot && (
+                  <div className="bg-sky-50/80 border border-sky-200/80 p-3.5 rounded-2xl">
+                    <h4 className="text-xs font-black text-sky-900 flex items-center gap-1.5 mb-1.5">
+                      <span>📸</span>
+                      <span>明信片級拍照取景密技</span>
+                    </h4>
+                    <p className="text-xs text-sky-950 leading-relaxed">
+                      {selectedStoryItem.storyAndTips.photoSpot}
+                    </p>
+                  </div>
+                )}
+
+                {selectedStoryItem.storyAndTips?.selfDriveTip && (
+                  <div className="bg-purple-50/80 border border-purple-200/80 p-3.5 rounded-2xl">
+                    <h4 className="text-xs font-black text-purple-900 flex items-center gap-1.5 mb-1.5">
+                      <span>🚗</span>
+                      <span>自駕停車與路線指引</span>
+                    </h4>
+                    <p className="text-xs text-purple-950 leading-relaxed">
+                      {selectedStoryItem.storyAndTips.selfDriveTip}
+                    </p>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      handleNavigate(selectedStoryItem);
+                      setSelectedStoryItem(null);
+                    }}
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white text-xs font-extrabold rounded-2xl shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    <SketchPin className="w-4 h-4" />
+                    <span>立即開啟 Google 導航</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 彈出視窗 2：地理氣候清單 */}
+          {showClimateModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+              <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[85vh] overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800">
+                      <span className="text-base">🏔️</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                        環境準備度分析
+                      </span>
+                      <h3 className="text-base font-extrabold text-stone-900">
+                        目的地地理與氣候特徵
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowClimateModal(false)}
+                    className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="p-3.5 bg-white rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+                  <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                    <span>🗺️</span> 地形地貌特徵
+                  </span>
+                  <p className="text-xs text-stone-700 leading-relaxed">
+                    {tripData.geographyOverview?.topography}
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-white rounded-2xl border border-stone-200/80 shadow-2xs space-y-1">
+                  <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
+                    <span>🌡️</span> 季節氣候與日夜溫差
+                  </span>
+                  <p className="text-xs text-stone-700 leading-relaxed">
+                    {tripData.geographyOverview?.climate}
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200/90 shadow-2xs space-y-1">
+                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <span>🎒</span> 推薦打包清單與穿搭
+                  </span>
+                  <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                    {tripData.geographyOverview?.packingSummary}
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-rose-50 rounded-2xl border border-rose-200/90 shadow-2xs space-y-1">
+                  <span className="text-xs font-black text-rose-950 flex items-center gap-1.5">
+                    <span>❤️</span> 安全防護與健康常備藥
+                  </span>
+                  <p className="text-xs text-rose-900 leading-relaxed">
+                    {tripData.geographyOverview?.safetyHealth}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowClimateModal(false)}
+                  className="w-full py-2.5 bg-stone-800 text-[#FAF7F2] text-xs font-extrabold rounded-2xl shadow-md"
+                >
+                  已充分瞭解，回到行程
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 彈出視窗 3：AI 智能行程客製 */}
+          {showPlannerModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-[#FAF7F2] w-full max-w-md rounded-3xl border-2 border-[#D8C7B0] p-5 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2D5C3]">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-xs">
+                      <SketchSparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest">
+                        旅行規劃專家 AI
+                      </span>
+                      <h3 className="text-base font-extrabold text-stone-900">
+                        為您客製全球手繪行程
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    disabled={isGenerating}
+                    onClick={() => setShowPlannerModal(false)}
+                    className="w-8 h-8 rounded-full bg-stone-200 text-stone-600 font-bold flex items-center justify-center hover:bg-stone-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Gemini API Key 設定區塊 (摺疊式) */}
+                <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-950 flex items-center gap-1">
+                      <span>🔑</span> Gemini API Key 設定
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowKeyInput(!showKeyInput)}
+                      className="text-[11px] text-amber-800 underline font-bold"
+                    >
+                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已填寫 (點此修改) ▼" : "輸入 Key 解鎖完整 AI ▼")}
+                    </button>
+                  </div>
+                  {showKeyInput && (
+                    <div className="mt-2 pt-2 border-t border-amber-200/60 space-y-1.5">
+                      <input
+                        type="password"
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                        placeholder="請貼上您的 Google Gemini API Key (AIzaSy...)"
+                        className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-stone-800 font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      />
+                      <div className="flex items-center justify-between text-[10px] text-amber-800">
+                        <span>未填寫時將自動啟用「離線智慧範本」</span>
+                        <a
+                          href="https://aistudio.google.com/app/apikey"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-bold underline text-amber-900"
+                        >
+                          免費獲取 Key ↗
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      📍 心儀目的地
+                    </label>
+                    <input
+                      type="text"
+                      value={plannerForm.destination}
+                      onChange={(e) => setPlannerForm({ ...plannerForm, destination: e.target.value })}
+                      placeholder="例如：瑞士少女峰、冰島環島、泰國清邁..."
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        📅 旅行天數
+                      </label>
+                      <select
+                        value={plannerForm.daysCount}
+                        onChange={(e) => setPlannerForm({ ...plannerForm, daysCount: Number(e.target.value) })}
+                        className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                          <option key={n} value={n}>{n} 天</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-stone-700 block mb-1">
+                        👥 成員組成
+                      </label>
+                      <select
+                        value={plannerForm.companion}
+                        onChange={(e) => setPlannerForm({ ...plannerForm, companion: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      >
+                        <option value="情侶 / 夫妻蜜月">甜蜜情侶 / 夫妻</option>
+                        <option value="家庭親子 (含長輩或兒童)">溫馨家庭親子遊</option>
+                        <option value="三五好友自駕團">三五好友熱血自駕</option>
+                        <option value="獨自背包客冒險">獨行背包客探險</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      💰 預算期待
+                    </label>
+                    <select
+                      value={plannerForm.budget}
+                      onChange={(e) => setPlannerForm({ ...plannerForm, budget: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    >
+                      <option value="親民小資高CP值 (約 NT$ 25,000 / 人)">經濟小資高CP值</option>
+                      <option value="精緻舒適中高預算 (約 NT$ 45,000 / 人)">精緻舒適無負擔</option>
+                      <option value="頂級奢華享受 (約 NT$ 80,000+ / 人)">頂級奢華美饌住宿</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-stone-700 block mb-1">
+                      🎨 旅行風格與偏好
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={plannerForm.stylePreference}
+                      onChange={(e) => setPlannerForm({ ...plannerForm, stylePreference: e.target.value })}
+                      placeholder="例如：喜歡米其林私房料理、不要太趕..."
+                      className="w-full px-3 py-2 bg-white border border-[#D5C7B2] rounded-xl text-stone-800 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    disabled={isGenerating}
+                    onClick={handleGenerateAiTrip}
+                    className={`w-full py-3 rounded-2xl font-extrabold text-xs text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                      isGenerating
+                        ? 'bg-stone-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:opacity-95 active:scale-98'
+                    }`}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>專家正繪製專屬手帳中，請稍候...</span>
+                      </>
+                    ) : (
+                      <>
+                        <SketchSparkles className="w-4 h-4 text-amber-200" />
+                        <span>開始繪製專屬手繪行程 (AI 生成)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toast 提示 */}
+          {toastMessage && (
+            <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-stone-900/90 text-white text-xs font-bold rounded-full shadow-2xl backdrop-blur-sm border border-stone-700 flex items-center gap-2">
+              <span>✨</span>
+              <span>{toastMessage}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ==========================================
+    // 行程卡片 Component
+    // ==========================================
+    function ItineraryCard({ item, onNavigate, onOpenStory, onCopyCode }) {
+      const typeConfig = {
+        attraction: {
+          badge: "景點名勝",
+          badgeBg: "bg-sky-100 text-sky-900 border-sky-300",
+          cardBorder: "border-[#E2D8C6] hover:border-sky-400",
+          icon: <SketchAttraction className="w-4 h-4 text-sky-700" />
+        },
+        food: {
+          badge: "私房美饌",
+          badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
+          cardBorder: "border-[#E5D7C2] hover:border-orange-400",
+          icon: <SketchFood className="w-4 h-4 text-orange-700" />
+        },
+        transport: {
+          badge: "自駕交通",
+          badgeBg: "bg-purple-100 text-purple-950 border-purple-300",
+          cardBorder: "border-[#E1D6C5] hover:border-purple-400",
+          icon: <SketchCar className="w-4 h-4 text-purple-700" />
+        },
+        hotel: {
+          badge: "特色下榻",
+          badgeBg: "bg-emerald-100 text-emerald-950 border-emerald-300",
+          cardBorder: "border-[#E0D8C6] hover:border-emerald-400",
+          icon: <SketchHotel className="w-4 h-4 text-emerald-700" />
+        }
+      };
+
+      const config = typeConfig[item.type] || typeConfig.attraction;
+
+      return (
+        <div className={`relative bg-white/95 rounded-2xl p-3.5 border-2 ${config.cardBorder} shadow-xs transition-all duration-200`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="font-mono text-xs font-black text-amber-900 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200">
+                {item.time}
+              </span>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${config.badgeBg} flex items-center gap-1`}>
+                {config.icon}
+                <span>{config.badge}</span>
+              </span>
+              {item.duration && (
+                <span className="text-[10px] text-stone-400 font-medium">⏱️ {item.duration}</span>
+              )}
+            </div>
+
+            {item.bookingCode && (
+              <button
+                onClick={(e) => onCopyCode(item.bookingCode, e)}
+                className="group flex items-center space-x-1 px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-md text-[10px] font-mono font-bold shadow-2xs transition-all active:scale-95"
+                title="點擊複製代號"
+              >
+                <span>🔑</span>
+                <span className="underline decoration-indigo-300">{item.bookingCode}</span>
+                <span className="text-[9px] opacity-70 group-hover:opacity-100">📋</span>
+              </button>
+            )}
+          </div>
+
+          <div className="mt-2">
+            <h3 className="text-sm font-extrabold text-stone-900 leading-snug">
+              {item.title}
+            </h3>
+            <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+              {item.description}
+            </p>
+          </div>
+
+          {/* 亮點標籤區 */}
+          <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200/90 flex flex-wrap gap-1.5">
+            {item.mustEat && item.mustEat.map((food, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-800 border border-rose-300/80 rounded-lg text-[11px] font-black shadow-2xs">
+                <span>🍜 必吃：</span>
+                <span>{food}</span>
+              </span>
+            ))}
+
+            {item.mustOrder && item.mustOrder.map((menu, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-300/80 rounded-lg text-[11px] font-black shadow-2xs">
+                <span>📝 必點：</span>
+                <span>{menu}</span>
+              </span>
+            ))}
+
+            {item.mustBuy && item.mustBuy.map((souvenir, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-900 border border-emerald-300/80 rounded-lg text-[11px] font-black shadow-2xs">
+                <span>🎁 必買：</span>
+                <span>{souvenir}</span>
+              </span>
+            ))}
+          </div>
+
+          {/* 底部導航與故事 */}
+          <div className="mt-3 flex items-center justify-between gap-2 pt-1">
+            <div className="flex items-center text-[11px] text-stone-500 font-medium truncate">
+              <span className="text-stone-400 mr-1">📍</span>
+              <span className="truncate">{item.locationName}</span>
+            </div>
+
+            <div className="flex items-center space-x-1.5 shrink-0">
+              {item.storyAndTips && (
+                <button
+                  onClick={onOpenStory}
+                  className="px-2.5 py-1 bg-amber-100/80 hover:bg-amber-200 text-amber-900 rounded-xl text-[11px] font-bold border border-amber-300 flex items-center gap-1 transition-all active:scale-95"
+                >
+                  <span>📖</span>
+                  <span>攻略故事</span>
+                </button>
+              )}
+
+              <button
+                onClick={onNavigate}
+                className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-[#FAF7F2] rounded-xl text-[11px] font-bold shadow-xs flex items-center gap-1 transition-all active:scale-95"
+              >
+                <SketchPin className="w-3.5 h-3.5 text-amber-300" />
+                <span>導航</span>
               </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* 底部全域 Toast 提示 */}
-      {toastMessage && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-stone-900/90 text-white text-xs font-bold rounded-full shadow-2xl backdrop-blur-sm border border-stone-700 animate-in fade-in slide-in-from-bottom-3 duration-200 flex items-center gap-2">
-          <span>✨</span>
-          <span>{toastMessage}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ==========================================
-// 行程卡片 Component (分類設計 + 亮點高光標籤 + 導航按鈕)
-// ==========================================
-function ItineraryCard({ item, onNavigate, onOpenStory, onCopyCode }) {
-  // 依據類型賦予特色手繪色彩主題
-  const typeConfig = {
-    attraction: {
-      badge: "景點名勝",
-      badgeBg: "bg-sky-100 text-sky-900 border-sky-300",
-      cardBorder: "border-[#E2D8C6] hover:border-sky-400",
-      icon: <SketchAttraction className="w-4 h-4 text-sky-700" />
-    },
-    food: {
-      badge: "私房美饌",
-      badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
-      cardBorder: "border-[#E5D7C2] hover:border-orange-400",
-      icon: <SketchFood className="w-4 h-4 text-orange-700" />
-    },
-    transport: {
-      badge: "自駕交通",
-      badgeBg: "bg-purple-100 text-purple-950 border-purple-300",
-      cardBorder: "border-[#E1D6C5] hover:border-purple-400",
-      icon: <SketchCar className="w-4 h-4 text-purple-700" />
-    },
-    hotel: {
-      badge: "特色下榻",
-      badgeBg: "bg-emerald-100 text-emerald-950 border-emerald-300",
-      cardBorder: "border-[#E0D8C6] hover:border-emerald-400",
-      icon: <SketchHotel className="w-4 h-4 text-emerald-700" />
+      );
     }
-  };
 
-  const config = typeConfig[item.type] || typeConfig.attraction;
-
-  return (
-    <div className={`relative bg-white/95 rounded-2xl p-3.5 border-2 ${config.cardBorder} shadow-xs transition-all duration-200`}>
-      {/* 頂部時間、類別與預約代號 */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center space-x-2">
-          <span className="font-mono text-xs font-black text-amber-900 bg-amber-100/70 px-2 py-0.5 rounded-md border border-amber-200">
-            {item.time}
-          </span>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${config.badgeBg} flex items-center gap-1`}>
-            {config.icon}
-            <span>{config.badge}</span>
-          </span>
-          {item.duration && (
-            <span className="text-[10px] text-stone-400 font-medium">⏱️ {item.duration}</span>
-          )}
-        </div>
-
-        {/* 重要預約代號標籤 (紫色亮顯 + 點擊一鍵複製) */}
-        {item.bookingCode && (
-          <button
-            onClick={(e) => onCopyCode(item.bookingCode, e)}
-            className="group flex items-center space-x-1 px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-md text-[10px] font-mono font-bold shadow-2xs transition-all active:scale-95"
-            title="點擊複製代號"
-          >
-            <span>🔑</span>
-            <span className="underline decoration-indigo-300">{item.bookingCode}</span>
-            <span className="text-[9px] opacity-70 group-hover:opacity-100">📋</span>
-          </button>
-        )}
-      </div>
-
-      {/* 標題與簡述 */}
-      <div className="mt-2">
-        <h3 className="text-sm font-extrabold text-stone-900 leading-snug">
-          {item.title}
-        </h3>
-        <p className="text-xs text-stone-600 mt-1 leading-relaxed">
-          {item.description}
-        </p>
-      </div>
-
-      {/* ===== 導遊智能亮點高光標籤區 ===== */}
-      <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200/90 flex flex-wrap gap-1.5">
-        
-        {/* 必吃美食 (珊瑚橘標籤) */}
-        {item.mustEat && item.mustEat.map((food, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-800 border border-rose-300/80 rounded-lg text-[11px] font-black shadow-2xs"
-          >
-            <span>🍜 必吃：</span>
-            <span>{food}</span>
-          </span>
-        ))}
-
-        {/* 必點菜單 (琥珀黃標籤) */}
-        {item.mustOrder && item.mustOrder.map((menu, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-300/80 rounded-lg text-[11px] font-black shadow-2xs"
-          >
-            <span>📝 必點：</span>
-            <span>{menu}</span>
-          </span>
-        ))}
-
-        {/* 必買伴手禮 (青翠綠標籤) */}
-        {item.mustBuy && item.mustBuy.map((souvenir, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-900 border border-emerald-300/80 rounded-lg text-[11px] font-black shadow-2xs"
-          >
-            <span>🎁 必買：</span>
-            <span>{souvenir}</span>
-          </span>
-        ))}
-      </div>
-
-      {/* 底部操作條：地點導航 + 導遊私房故事按鈕 */}
-      <div className="mt-3 flex items-center justify-between gap-2 pt-1">
-        <div className="flex items-center text-[11px] text-stone-500 font-medium truncate">
-          <span className="text-stone-400 mr-1">📍</span>
-          <span className="truncate">{item.locationName}</span>
-        </div>
-
-        <div className="flex items-center space-x-1.5 shrink-0">
-          {/* 深度故事抽屜按鈕 */}
-          {item.storyAndTips && (
-            <button
-              onClick={onOpenStory}
-              className="px-2.5 py-1 bg-amber-100/80 hover:bg-amber-200 text-amber-900 rounded-xl text-[11px] font-bold border border-amber-300 flex items-center gap-1 transition-all active:scale-95"
-            >
-              <span>📖</span>
-              <span>攻略故事</span>
-            </button>
-          )}
-
-          {/* 一鍵 Google Maps 導航按鈕 (自駕與步行專用) */}
-          <button
-            onClick={onNavigate}
-            className="px-3 py-1 bg-stone-900 hover:bg-stone-800 text-[#FAF7F2] rounded-xl text-[11px] font-bold shadow-xs flex items-center gap-1 transition-all active:scale-95"
-          >
-            <SketchPin className="w-3.5 h-3.5 text-amber-300" />
-            <span>導航</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+    // 渲染至網頁 DOM
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
