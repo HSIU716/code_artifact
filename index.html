@@ -38,11 +38,11 @@
     const { useState, useEffect, useMemo } = React;
 
     // ==========================================
-    // 🔑 在此處直接填入您的 Google Gemini API Key
+    // 🔑 在此處直接填入您的 Google Gemini API Key (選填)
     // ==========================================
     // 將引號內的文字替換為您的 API Key (例如: "AIzaSyD...")
-    // 填入後打開網頁即可自動啟用 AI 生成，無須手動在畫面輸入！
-    const DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6KbhRPEjC49kV0gg4wcSYLAxbwQaIgoxJFnPTCONcRyrw";
+    // 填入後打開網頁即可自動啟用 AI 生成，亦可在畫面上直接輸入！
+    const DEFAULT_GEMINI_API_KEY = "";
 
     // ==========================================
     // 手繪風格圖標與插圖組件 (純 SVG 繪製)
@@ -510,8 +510,10 @@
       const [showPlannerModal, setShowPlannerModal] = useState(false);
       const [toastMessage, setToastMessage] = useState("");
       const [isGenerating, setIsGenerating] = useState(false);
-      const [apiKeyInput, setApiKeyInput] = useState(DEFAULT_GEMINI_API_KEY);
-      const [showKeyInput, setShowKeyInput] = useState(!DEFAULT_GEMINI_API_KEY);
+      const [apiKeyInput, setApiKeyInput] = useState(() => {
+        return localStorage.getItem("GEMINI_KEY") || DEFAULT_GEMINI_API_KEY;
+      });
+      const [showKeyInput, setShowKeyInput] = useState(false);
 
       const [plannerForm, setPlannerForm] = useState({
         destination: "瑞士少女峰與策馬特",
@@ -529,10 +531,18 @@
       };
 
       const handleNavigate = (item) => {
+        const dest = (tripData.destination || "").toLowerCase();
+        const isKorea = dest.includes("韓國") || dest.includes("首爾") || dest.includes("釜山") || dest.includes("濟州") || dest.includes("korea");
         const query = item.navQuery || item.locationName;
-        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        
+        let url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+        if (isKorea) {
+          url = `https://map.naver.com/v5/search/${encodeURIComponent(query)}`;
+          triggerToast(`🧭 正為您開啟 Naver Map 導航【${item.title}】！`);
+        } else {
+          triggerToast(`🧭 正為您開啟 Google 地圖導航【${item.title}】！`);
+        }
         window.open(url, '_blank');
-        triggerToast(`🧭 正為您開啟【${item.title}】的 Google 導航！`);
       };
 
       const handleCopyCode = (code, e) => {
@@ -568,30 +578,32 @@
         }
       };
 
-      // AI 規劃調用 (Gemini API + 離線範本雙軌支援)
+      // AI 規劃調用 (Gemini 2.5 API + 智慧離線模組雙軌)
       const handleGenerateAiTrip = async () => {
         setIsGenerating(true);
-        // 優先讀取輸入框或內嵌的 DEFAULT_GEMINI_API_KEY
         const apiKey = (apiKeyInput || DEFAULT_GEMINI_API_KEY).trim();
+        if (apiKey) {
+          localStorage.setItem("GEMINI_KEY", apiKey);
+        }
 
-        // 離線智慧範本生成器 (當無 API Key 或連線失敗時提供流暢備援)
-        const getOfflineTemplate = () => {
-          const dest = plannerForm.destination || "瑞士阿爾卑斯山脈";
+        // 離線生成演算法（無需 Key 也可完美產出）
+        const generateOfflineTrip = () => {
+          const dest = plannerForm.destination || "精選秘境之旅";
           const days = [];
           for (let i = 1; i <= plannerForm.daysCount; i++) {
             days.push({
               day: i,
               date: `第 ${i} 天`,
-              title: `${dest}・第 ${i} 日精選探索`,
-              cityOrArea: `${dest}・核心風景區`,
+              title: `${dest}・第 ${i} 日深度探索`,
+              cityOrArea: `${dest} 核心風景區`,
               weather: {
                 temp: "14°C ~ 22°C",
-                condition: "晴朗微風・舒適好天氣",
-                icon: "sunny",
-                humidity: "55%",
-                clothingTip: "洋蔥式多層穿搭，隨身攜帶防風保暖外套與遮陽帽。",
-                geographyNote: "地勢開闊，午後陽光充足，日夜溫差約 8°C。",
-                safetyHealthTip: "步行路段請著防滑健行鞋，自駕山區注意減速靠右慢行。"
+                condition: "晴朗舒適・宜出遊",
+                icon: i % 2 === 0 ? "sunny" : "cloudy",
+                humidity: "56%",
+                clothingTip: "洋蔥式舒適穿搭，隨身攜帶薄外套與防曬防風裝備。",
+                geographyNote: "地勢開闊，清晨微涼，午後陽光充足。",
+                safetyHealthTip: "步行石階路段請著防滑健走鞋，隨身補充足夠水分。"
               },
               items: [
                 {
@@ -659,6 +671,7 @@
               ]
             });
           }
+
           return {
             destination: plannerForm.destination,
             subtitle: `${plannerForm.companion}・${plannerForm.stylePreference.slice(0, 24)}...`,
@@ -677,15 +690,15 @@
         };
 
         if (!apiKey) {
-          // 無 API Key 時使用離線智慧範本快速生成
-          await new Promise(r => setTimeout(r, 800));
-          const offlineTrip = getOfflineTemplate();
+          // 無 API Key 時使用離線智慧模組立即生成
+          await new Promise(r => setTimeout(r, 600));
+          const offlineTrip = generateOfflineTrip();
           setTripData(offlineTrip);
           setActiveDayIndex(0);
           setActiveCategory('all');
           setIsGenerating(false);
           setShowPlannerModal(false);
-          triggerToast("✨ 已為您繪製客製行程！（內嵌 API Key 可解鎖無限制真實 AI 規劃）");
+          triggerToast("✨ 已為您繪製完成客製行程！(填入 API Key 可啟用即時全網 AI)");
           return;
         }
 
@@ -739,15 +752,15 @@
           setActiveDayIndex(0);
           setActiveCategory('all');
           setShowPlannerModal(false);
-          triggerToast("✨ 哇！Gemini AI 已為您繪製完成極致專屬行程！");
+          triggerToast("✨ Gemini AI 已為您繪製完成全球專屬行程！");
         } else {
-          // 呼叫失敗時平滑切換至智慧範本
-          const fallbackTrip = getOfflineTemplate();
+          // 網路失敗自動退回離線生成
+          const fallbackTrip = generateOfflineTrip();
           setTripData(fallbackTrip);
           setActiveDayIndex(0);
           setActiveCategory('all');
           setShowPlannerModal(false);
-          triggerToast("🔑 API Key 連線異常或受限，已切換至離線智慧範本！");
+          triggerToast("💡 連線異常或 API Key 受限，已自動為您切換至離線智慧模組！");
         }
       };
 
@@ -1164,18 +1177,18 @@
                   </button>
                 </div>
 
-                {/* Gemini API Key 設定區塊 (摺疊式) */}
+                {/* Gemini API Key 摺疊設定區 */}
                 <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-amber-950 flex items-center gap-1">
-                      <span>🔑</span> Gemini API Key 設定
+                      <span>🔑</span> Gemini API Key (選填)
                     </span>
                     <button
                       type="button"
                       onClick={() => setShowKeyInput(!showKeyInput)}
                       className="text-[11px] text-amber-800 underline font-bold"
                     >
-                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已填寫 (點此修改) ▼" : "輸入 Key 解鎖完整 AI ▼")}
+                      {showKeyInput ? "收合設定 ▲" : (apiKeyInput ? "已設定 (點擊修改) ▼" : "輸入 Key 啟用線上 AI ▼")}
                     </button>
                   </div>
                   {showKeyInput && (
@@ -1184,11 +1197,11 @@
                         type="password"
                         value={apiKeyInput}
                         onChange={(e) => setApiKeyInput(e.target.value)}
-                        placeholder="請貼上您的 Google Gemini API Key (AIzaSy...)"
+                        placeholder="請貼上 Google Gemini API Key (AIzaSy...)"
                         className="w-full px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg text-stone-800 font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                       />
                       <div className="flex items-center justify-between text-[10px] text-amber-800">
-                        <span>未填寫時將自動啟用「離線智慧範本」</span>
+                        <span>未填寫時將自動啟用離線智慧模組</span>
                         <a
                           href="https://aistudio.google.com/app/apikey"
                           target="_blank"
@@ -1296,7 +1309,7 @@
                     ) : (
                       <>
                         <SketchSparkles className="w-4 h-4 text-amber-200" />
-                        <span>開始繪製專屬手繪行程 (AI 生成)</span>
+                        <span>開始繪製專屬手繪行程</span>
                       </>
                     )}
                   </button>
